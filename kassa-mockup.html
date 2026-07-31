@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Кассы самообслуживания — Альфа-Банк</title>
+  <script>
+    function goTo(n) {
+      var radio = document.getElementById('page-' + n);
+      if (radio) radio.checked = true;
+      var screen = document.getElementById('screen-' + n);
+      if (screen) screen.scrollTop = 0;
+    }
+
+    var registers = 50;
+    var years = 3;
+    var calcResult = null;
+    var BASE_MONTHLY = 6990;
+    var PURCHASE_PRICES = {
+      kassa: 150000,
+      scanner: 4000,
+      pedestal: 27000,
+      scales: 8500,
+      install: 17500
+    };
+
+    var optionPrices = { scanner: 110, pedestal: 730, scales: 230, install: 490 };
+
+    function isOptChecked(id) {
+      var el = document.getElementById(id);
+      return el ? el.checked : false;
+    }
+
+    function getSelectedOptions() {
+      return {
+        scanner: isOptChecked('opt-scanner-cb'),
+        pedestal: isOptChecked('opt-pedestal-cb'),
+        scales: isOptChecked('opt-scales-cb'),
+        install: isOptChecked('opt-install-cb')
+      };
+    }
+
+    function getMonthlyPrice() {
+      var total = BASE_MONTHLY;
+      if (isOptChecked('opt-scanner-cb')) total += optionPrices.scanner;
+      if (isOptChecked('opt-pedestal-cb')) total += optionPrices.pedestal;
+      if (isOptChecked('opt-scales-cb')) total += optionPrices.scales;
+      if (isOptChecked('opt-install-cb')) total += optionPrices.install;
+      return total;
+    }
+
+    function formatMoney(n) {
+      return n.toLocaleString('ru-RU');
+    }
+
+    function formatMillions(n) {
+      if (n >= 1000000) {
+        var mln = n / 1000000;
+        return mln % 1 === 0 ? mln + ' млн ₽' : mln.toFixed(1).replace('.', ',') + ' млн ₽';
+      }
+      return formatMoney(n) + ' ₽';
+    }
+
+    function updateTotal() {
+      var el = document.getElementById('monthly-total');
+      if (el) el.textContent = formatMoney(getMonthlyPrice()) + ' ₽/мес';
+    }
+
+    function changeRegisters(delta) {
+      registers = Math.max(1, Math.min(999, registers + delta));
+      var el = document.getElementById('registers-count');
+      if (el) el.textContent = registers;
+    }
+
+    function setPeriod(y) {
+      years = y;
+      var tabs = document.querySelectorAll('.period-tab');
+      for (var i = 0; i < tabs.length; i++) {
+        var tab = tabs[i];
+        var ty = parseInt(tab.getAttribute('data-years'), 10);
+        if (ty === y) tab.classList.add('active');
+        else tab.classList.remove('active');
+      }
+    }
+
+    function yearLabel(y) {
+      if (y === 1) return '1 год';
+      if (y >= 2 && y <= 4) return y + ' года';
+      return y + ' лет';
+    }
+
+    function runCalculation() {
+      var opts = getSelectedOptions();
+      var months = years * 12;
+      var monthly = getMonthlyPrice();
+      var unitPurchase = PURCHASE_PRICES.kassa;
+      if (opts.scanner) unitPurchase += PURCHASE_PRICES.scanner;
+      if (opts.pedestal) unitPurchase += PURCHASE_PRICES.pedestal;
+      if (opts.scales) unitPurchase += PURCHASE_PRICES.scales;
+      if (opts.install) unitPurchase += PURCHASE_PRICES.install;
+      var fullKit = unitPurchase * registers;
+      var serviceTotal = fullKit * 0.06 * years;
+      var fundingTotal = fullKit * 0.19 * years;
+      var purchaseTotal = fullKit + serviceTotal + fundingTotal;
+      var subscriptionTotal = monthly * registers * months;
+      var savings = purchaseTotal - subscriptionTotal;
+      calcResult = {
+        registers: registers,
+        years: years,
+        yearsLabel: yearLabel(years),
+        months: months,
+        monthly: monthly,
+        monthlyFormatted: formatMoney(monthly) + ' \u20bd',
+        options: opts,
+        fullKit: fullKit,
+        serviceTotal: serviceTotal,
+        purchaseTotal: purchaseTotal,
+        subscriptionTotal: subscriptionTotal,
+        savings: Math.max(0, savings),
+        purchaseTotalFormatted: formatMillions(purchaseTotal),
+        subscriptionTotalFormatted: formatMillions(subscriptionTotal),
+        savingsFormatted: formatMillions(Math.max(0, savings))
+      };
+    }
+
+    function calculateAndGo() {
+      runCalculation();
+      goTo(4);
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #EF3124;
+      --red-dark: #c9281d;
+      --bg: #000000;
+      --surface: #1a1a1a;
+      --surface-2: #252525;
+      --text: #ffffff;
+      --text-muted: #8a8a8a;
+      --text-dim: #666666;
+      --green: #4caf50;
+      --yellow: #ffc107;
+      --radius-lg: 40px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100%;
+      min-height: 100dvh;
+      background: #0a0a0a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* iPad frame */
+    .ipad {
+      width: 768px;
+      height: 1024px;
+      max-height: calc(100dvh - 48px);
+      background: var(--bg);
+      border-radius: var(--radius-lg);
+      border: 3px solid #222;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6), inset 0 0 0 1px #333;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .page-nav,
+    .option-nav {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      padding: 32px 40px 40px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .submit-trigger {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    #page-1:checked + .screen-1,
+    #page-2:checked + .screen-2,
+    #page-3:checked + .screen-3,
+    #page-4:checked + .screen-4,
+    #page-5:checked + .screen-5 {
+      display: flex;
+    }
+
+    /* Shared header */
+    .brand {
+      text-align: center;
+      color: var(--red);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      margin-bottom: 8px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      min-height: 28px;
+    }
+
+    .back-btn,
+    label.back-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 15px;
+      cursor: pointer;
+      padding: 8px 4px;
+      min-height: 44px;
+      min-width: 44px;
+      transition: color .15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .back-btn:hover { color: var(--text); }
+
+    .header-spacer { width: 60px; }
+
+    /* Buttons */
+    .btn-primary,
+    label.btn-primary {
+      width: 100%;
+      background: var(--red);
+      color: var(--text);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 18px 24px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      margin-top: auto;
+      min-height: 52px;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    label.btn-primary,
+    label.btn-secondary {
+      display: block;
+      text-align: center;
+      line-height: 1.2;
+      position: relative;
+    }
+
+    .file-warning {
+      background: rgba(239, 49, 36, .15);
+      border: 1px solid var(--red);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      color: #ff8a80;
+      font-size: 13px;
+      line-height: 1.45;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .file-warning.visible { display: block; }
+
+    .btn-primary:hover,
+    label.btn-primary:hover { background: var(--red-dark); }
+    .btn-primary:active { transform: scale(.98); }
+
+    /* ===== SCREEN 1 ===== */
+    .screen-1 {
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      padding-top: 40px;
+    }
+
+    .hero-visual {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-height: 420px;
+    }
+
+    .hero-visual svg {
+      width: 100%;
+      max-width: 340px;
+      height: auto;
+    }
+
+    .screen-1 h1 {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--text);
+      margin-bottom: 48px;
+    }
+
+    /* ===== SCREEN 2 ===== */
+    .price-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .price-card .label {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .price-card .price {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--red);
+    }
+
+    .screen-2 h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+
+    .options-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .option-item,
+    label.option-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      user-select: none;
+      min-height: 44px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .checkbox {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #555;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+    }
+
+
+    .option-label {
+      font-size: 17px;
+      color: var(--text);
+    }
+
+    .total-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .total-card .label {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .total-card .total {
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ===== SCREEN 3 ===== */
+    .screen-3 h2 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 48px;
+      line-height: 1.3;
+    }
+
+    .field-group {
+      margin-bottom: 36px;
+    }
+
+    .field-label {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .stepper {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .stepper-btn {
+      width: 64px;
+      height: 64px;
+      border: none;
+      font-size: 28px;
+      font-weight: 300;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .15s;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .stepper-btn.minus {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .stepper-btn.plus {
+      background: var(--red);
+      color: var(--text);
+    }
+
+    .stepper-btn:hover { opacity: .85; }
+
+    .stepper-value {
+      flex: 1;
+      text-align: center;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .period-tabs {
+      display: flex;
+      gap: 10px;
+    }
+
+    .period-tab {
+      flex: 1;
+      background: var(--surface);
+      border: 2px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 16px 8px;
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      min-height: 52px;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .period-tab.active {
+      border-color: var(--red);
+      background: rgba(239, 49, 36, .12);
+    }
+
+    .period-tab:hover:not(.active) { background: var(--surface-2); }
+
+    .disclaimer {
+      color: var(--text-dim);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 32px;
+    }
+
+    /* ===== SCREEN 4 ===== */
+    .screen-4 {
+      padding: 24px 28px 28px;
+      overflow-y: auto;
+    }
+
+    .screen-4 .page-title {
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .screen-4 .page-title h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .screen-4 .subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
+    .comparison {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      margin-bottom: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .vs-badge {
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .compare-card {
+      flex: 1;
+      border-radius: var(--radius-md);
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      font-size: 11px;
+      line-height: 1.4;
+      overflow: hidden;
+    }
+
+    .compare-card.purchase {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .compare-card.subscription {
+      background: var(--red);
+      color: var(--text);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .card-total {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .line-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+      color: inherit;
+      opacity: .85;
+    }
+
+    .line-item.bold {
+      font-weight: 700;
+      opacity: 1;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,.15);
+    }
+
+    .line-item .val { white-space: nowrap; }
+
+    .sub-note {
+      font-size: 9px;
+      opacity: .7;
+    }
+
+    .warnings {
+      margin-top: auto;
+      padding-top: 10px;
+    }
+
+    .warning-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      margin-bottom: 4px;
+      color: var(--yellow);
+    }
+
+    .benefits {
+      margin-top: 8px;
+    }
+
+    .benefit-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 6px;
+      font-size: 10px;
+    }
+
+    .benefit-item .check {
+      color: #a5f3a5;
+      flex-shrink: 0;
+    }
+
+    .insight-banner {
+      background: var(--red);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: auto;
+    }
+
+    .insight-icon {
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+
+    .insight-text strong {
+      display: block;
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .insight-text span {
+      font-size: 12px;
+      opacity: .9;
+      line-height: 1.4;
+    }
+
+    .screen-4-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .screen-4-actions .btn-primary,
+    .screen-4-actions label.btn-primary {
+      margin-top: 0;
+      flex: 1;
+    }
+
+    .btn-secondary,
+    label.btn-secondary {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid #333;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      min-height: 52px;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .btn-secondary:hover { background: var(--surface-2); }
+
+    /* ===== SCREEN 5 ===== */
+    .screen-5 h2 {
+      font-size: 26px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .screen-5 .form-subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 36px;
+      line-height: 1.4;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .form-group input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid #333;
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+      transition: border-color .15s;
+    }
+
+    .form-group input:focus { border-color: var(--red); }
+    .form-group input::placeholder { color: #555; }
+
+    .success-toast {
+      background: var(--surface);
+      border: 1px solid #333;
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      margin-top: 24px;
+      display: none;
+      animation: fadeIn .3s ease;
+    }
+
+    .success-toast.visible { display: block; }
+
+    .success-toast .success-title {
+      color: var(--green);
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .success-toast p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .error-toast {
+      background: rgba(239, 49, 36, .12);
+      border: 1px solid var(--red);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-top: 16px;
+      display: none;
+      color: #ff8a80;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .error-toast.visible { display: block; }
+
+    .error-toast a { color: #ff8a80; }
+    .error-toast code {
+      background: rgba(255,255,255,.08);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .btn-primary:disabled,
+    label.btn-primary.is-disabled {
+      opacity: .6;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 820px) {
+      body {
+        padding: 0;
+        align-items: stretch;
+      }
+
+      .ipad {
+        width: 100%;
+        max-width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+      }
+
+      .screen {
+        padding: 24px 20px 28px;
+        padding-bottom: max(28px, env(safe-area-inset-bottom));
+      }
+
+      .screen-1 h1 {
+        font-size: 26px;
+      }
+
+      .screen-4 {
+        padding: 20px 16px 24px;
+      }
+    }
+
+    /* Скрытый блок для генерации PNG-расчёта */
+    .email-image-render {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #email-image-card {
+      width: 680px;
+      background: #000;
+      border-radius: 24px;
+      padding: 36px 32px 28px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      color: #fff;
+    }
+
+    #email-image-card .e-brand {
+      text-align: center;
+      color: #EF3124;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    #email-image-card .e-title {
+      text-align: center;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    #email-image-card .e-subtitle {
+      text-align: center;
+      color: #8a8a8a;
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
+    #email-image-card .e-contact {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 13px;
+      color: #8a8a8a;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    #email-image-card .e-contact strong { color: #fff; }
+
+    #email-image-card .e-comparison {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      margin-bottom: 16px;
+    }
+
+    #email-image-card .e-card {
+      flex: 1;
+      border-radius: 14px;
+      padding: 16px 14px;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    #email-image-card .e-card.purchase { background: #1a1a1a; }
+    #email-image-card .e-card.subscription { background: #EF3124; }
+
+    #email-image-card .e-card-head {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    #email-image-card .e-card-total {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    #email-image-card .e-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+      opacity: .88;
+    }
+
+    #email-image-card .e-line.bold {
+      font-weight: 700;
+      opacity: 1;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,.15);
+    }
+
+    #email-image-card .e-vs {
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #666;
+    }
+
+    #email-image-card .e-benefit {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 5px;
+      font-size: 10px;
+    }
+
+    #email-image-card .e-benefit span:first-child { color: #a5f3a5; }
+
+    #email-image-card .e-warn {
+      color: #ffc107;
+      font-size: 10px;
+      margin-top: 10px;
+    }
+
+    #email-image-card .e-insight {
+      background: #EF3124;
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    #email-image-card .e-insight-icon { font-size: 28px; }
+
+    #email-image-card .e-insight-text strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 3px;
+    }
+
+    #email-image-card .e-insight-text span {
+      font-size: 11px;
+      opacity: .9;
+      line-height: 1.35;
+    }
+
+    #email-image-card .e-disclaimer {
+      font-size: 10px;
+      color: #555;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .ipad:has(#opt-scanner-cb:checked) label[for="opt-scanner-cb"] .checkbox,
+    .ipad:has(#opt-pedestal-cb:checked) label[for="opt-pedestal-cb"] .checkbox,
+    .ipad:has(#opt-scales-cb:checked) label[for="opt-scales-cb"] .checkbox,
+    .ipad:has(#opt-install-cb:checked) label[for="opt-install-cb"] .checkbox {
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .ipad:has(#opt-scanner-cb:checked) label[for="opt-scanner-cb"] .checkbox::after,
+    .ipad:has(#opt-pedestal-cb:checked) label[for="opt-pedestal-cb"] .checkbox::after,
+    .ipad:has(#opt-scales-cb:checked) label[for="opt-scales-cb"] .checkbox::after,
+    .ipad:has(#opt-install-cb:checked) label[for="opt-install-cb"] .checkbox::after {
+      content: '✓';
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    /* CSS-only demo: works without JavaScript (iPhone Files / Quick Look) */
+    .css-monthly > div, .css-purchase > span, .css-sub > span, .css-insight > span,
+    .css-s-monthly > span, .css-p-full > span, .css-p-service > span,
+    .css-p-funding > span, .css-p-sum > span { display: none; }
+    .css-monthly { font-size: 40px; font-weight: 700; color: var(--text); }
+    #row-scanner, #row-pedestal, #row-scales, #row-install { display: none; }
+    #opt-scanner-cb:checked ~ #page-4:checked + .screen-4 #row-scanner { display: flex; }
+    #opt-pedestal-cb:checked ~ #page-4:checked + .screen-4 #row-pedestal { display: flex; }
+    #opt-scales-cb:checked ~ #page-4:checked + .screen-4 #row-scales { display: flex; }
+    #opt-install-cb:checked ~ #page-4:checked + .screen-4 #row-install { display: flex; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-2:checked + .screen-2 .css-monthly .m-0000 { display: block; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-purchase .t-0000 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-sub .t-0000 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-insight .t-0000 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-s-monthly .t-0000 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-full .t-0000 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-service .t-0000 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-funding .t-0000 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-sum .t-0000 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-2:checked + .screen-2 .css-monthly .m-1000 { display: block; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-purchase .t-1000 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-sub .t-1000 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-insight .t-1000 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-s-monthly .t-1000 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-full .t-1000 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-service .t-1000 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-funding .t-1000 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-sum .t-1000 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-2:checked + .screen-2 .css-monthly .m-0100 { display: block; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-purchase .t-0100 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-sub .t-0100 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-insight .t-0100 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-s-monthly .t-0100 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-full .t-0100 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-service .t-0100 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-funding .t-0100 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-sum .t-0100 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-2:checked + .screen-2 .css-monthly .m-1100 { display: block; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-purchase .t-1100 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-sub .t-1100 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-insight .t-1100 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-s-monthly .t-1100 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-full .t-1100 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-service .t-1100 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-funding .t-1100 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-sum .t-1100 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-2:checked + .screen-2 .css-monthly .m-0010 { display: block; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-purchase .t-0010 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-sub .t-0010 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-insight .t-0010 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-s-monthly .t-0010 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-full .t-0010 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-service .t-0010 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-funding .t-0010 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-sum .t-0010 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-2:checked + .screen-2 .css-monthly .m-1010 { display: block; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-purchase .t-1010 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-sub .t-1010 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-insight .t-1010 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-s-monthly .t-1010 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-full .t-1010 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-service .t-1010 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-funding .t-1010 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-sum .t-1010 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-2:checked + .screen-2 .css-monthly .m-0110 { display: block; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-purchase .t-0110 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-sub .t-0110 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-insight .t-0110 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-s-monthly .t-0110 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-full .t-0110 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-service .t-0110 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-funding .t-0110 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-sum .t-0110 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-2:checked + .screen-2 .css-monthly .m-1110 { display: block; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-purchase .t-1110 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-sub .t-1110 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-insight .t-1110 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-s-monthly .t-1110 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-full .t-1110 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-service .t-1110 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-funding .t-1110 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:not(:checked) ~ #page-4:checked + .screen-4 .css-p-sum .t-1110 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-2:checked + .screen-2 .css-monthly .m-0001 { display: block; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-purchase .t-0001 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-sub .t-0001 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-insight .t-0001 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-s-monthly .t-0001 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-full .t-0001 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-service .t-0001 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-funding .t-0001 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-sum .t-0001 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-2:checked + .screen-2 .css-monthly .m-1001 { display: block; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-purchase .t-1001 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-sub .t-1001 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-insight .t-1001 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-s-monthly .t-1001 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-full .t-1001 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-service .t-1001 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-funding .t-1001 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-sum .t-1001 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-2:checked + .screen-2 .css-monthly .m-0101 { display: block; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-purchase .t-0101 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-sub .t-0101 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-insight .t-0101 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-s-monthly .t-0101 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-full .t-0101 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-service .t-0101 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-funding .t-0101 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-sum .t-0101 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-2:checked + .screen-2 .css-monthly .m-1101 { display: block; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-purchase .t-1101 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-sub .t-1101 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-insight .t-1101 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-s-monthly .t-1101 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-full .t-1101 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-service .t-1101 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-funding .t-1101 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:not(:checked) ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-sum .t-1101 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-2:checked + .screen-2 .css-monthly .m-0011 { display: block; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-purchase .t-0011 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-sub .t-0011 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-insight .t-0011 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-s-monthly .t-0011 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-full .t-0011 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-service .t-0011 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-funding .t-0011 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-sum .t-0011 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-2:checked + .screen-2 .css-monthly .m-1011 { display: block; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-purchase .t-1011 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-sub .t-1011 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-insight .t-1011 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-s-monthly .t-1011 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-full .t-1011 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-service .t-1011 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-funding .t-1011 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:not(:checked) ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-sum .t-1011 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-2:checked + .screen-2 .css-monthly .m-0111 { display: block; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-purchase .t-0111 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-sub .t-0111 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-insight .t-0111 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-s-monthly .t-0111 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-full .t-0111 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-service .t-0111 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-funding .t-0111 { display: inline; }
+    #opt-scanner-cb:not(:checked) ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-sum .t-0111 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-2:checked + .screen-2 .css-monthly .m-1111 { display: block; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-purchase .t-1111 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-sub .t-1111 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-insight .t-1111 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-s-monthly .t-1111 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-full .t-1111 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-service .t-1111 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-funding .t-1111 { display: inline; }
+    #opt-scanner-cb:checked ~ #opt-pedestal-cb:checked ~ #opt-scales-cb:checked ~ #opt-install-cb:checked ~ #page-4:checked + .screen-4 .css-p-sum .t-1111 { display: inline; }
+  </style>
+</head>
+<body>
+
+<div class="ipad">
+
+  <input type="checkbox" id="opt-scanner-cb" class="option-nav">
+  <input type="checkbox" id="opt-pedestal-cb" class="option-nav">
+  <input type="checkbox" id="opt-scales-cb" class="option-nav">
+  <input type="checkbox" id="opt-install-cb" class="option-nav">
+
+  <input type="radio" name="page" id="page-1" class="page-nav" checked>
+  <!-- Экран 1: Стартовый -->
+  <div class="screen screen-1" id="screen-1">
+    <div class="brand">Альфа-Банк</div>
+
+    <div class="hero-visual">
+      <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="160" cy="250" rx="100" ry="12" fill="#1a1a1a"/>
+        <rect x="80" y="60" width="160" height="180" rx="16" fill="#2a2a2a" stroke="#444" stroke-width="1"/>
+        <rect x="95" y="75" width="130" height="90" rx="8" fill="#EF3124"/>
+        <path d="M145 115 L160 130 L185 100" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <rect x="120" y="95" width="30" height="24" rx="4" fill="none" stroke="white" stroke-width="2"/>
+        <rect x="95" y="175" width="130" height="50" rx="8" fill="#333"/>
+        <rect x="110" y="188" width="40" height="24" rx="4" fill="#555"/>
+        <rect x="160" y="188" width="50" height="24" rx="4" fill="#EF3124"/>
+        <rect x="200" y="100" width="60" height="40" rx="6" fill="#1e3a5f" transform="rotate(15 230 120)"/>
+        <line x1="210" y1="115" x2="250" y2="115" stroke="#4caf50" stroke-width="2" transform="rotate(15 230 120)"/>
+        <line x1="210" y1="125" x2="240" y2="125" stroke="#4caf50" stroke-width="2" transform="rotate(15 230 120)"/>
+        <rect x="50" y="120" width="50" height="35" rx="6" fill="#252525" stroke="#444"/>
+        <text x="75" y="142" text-anchor="middle" fill="#888" font-size="8" font-family="sans-serif">ALFA</text>
+        <circle cx="260" cy="80" r="20" fill="#333" stroke="#555"/>
+        <path d="M250 80 L260 70 L270 80 L260 90 Z" fill="#EF3124"/>
+      </svg>
+    </div>
+
+    <h1>Кассы самообслуживания<br>Подписаться или купить?</h1>
+
+    <label for="page-2" class="btn-primary">Рассчитать экономику →</label>
+  </div>
+
+  <input type="radio" name="page" id="page-2" class="page-nav">
+  <!-- Экран 2: Комплектация -->
+  <div class="screen screen-2" id="screen-2">
+    <div class="brand">Альфа-Банк</div>
+
+    <div class="price-card">
+      <div class="label">Касса самообслуживания от</div>
+      <div class="price">6990 ₽/мес</div>
+    </div>
+
+    <h2>Настройте необходимую комплектацию</h2>
+
+<ul class="options-list">
+      <li>
+        <label for="opt-scanner-cb" class="option-item">
+          <span class="checkbox"></span>
+          <span class="option-label">Выносной сканер</span>
+        </label>
+      </li>
+      <li>
+        <label for="opt-pedestal-cb" class="option-item">
+          <span class="checkbox"></span>
+          <span class="option-label">Установочная тумба</span>
+        </label>
+      </li>
+      <li>
+        <label for="opt-scales-cb" class="option-item">
+          <span class="checkbox"></span>
+          <span class="option-label">Весы</span>
+        </label>
+      </li>
+      <li>
+        <label for="opt-install-cb" class="option-item">
+          <span class="checkbox"></span>
+          <span class="option-label">Монтаж оборудования</span>
+        </label>
+      </li>
+    </ul>
+
+    <div class="total-card">
+      <div class="label">Итого за 1 Кассу</div>
+      <div class="css-monthly">
+        <div class="m-0000">6 990 ₽/мес</div>
+        <div class="m-1000">7 100 ₽/мес</div>
+        <div class="m-0100">7 720 ₽/мес</div>
+        <div class="m-1100">7 830 ₽/мес</div>
+        <div class="m-0010">7 220 ₽/мес</div>
+        <div class="m-1010">7 330 ₽/мес</div>
+        <div class="m-0110">7 950 ₽/мес</div>
+        <div class="m-1110">8 060 ₽/мес</div>
+        <div class="m-0001">7 480 ₽/мес</div>
+        <div class="m-1001">7 590 ₽/мес</div>
+        <div class="m-0101">8 210 ₽/мес</div>
+        <div class="m-1101">8 320 ₽/мес</div>
+        <div class="m-0011">7 710 ₽/мес</div>
+        <div class="m-1011">7 820 ₽/мес</div>
+        <div class="m-0111">8 440 ₽/мес</div>
+        <div class="m-1111">8 550 ₽/мес</div>
+
+      </div>
+    </div>
+
+    <label for="page-3" class="btn-primary" >Далее →</label>
+  </div>
+
+  <input type="radio" name="page" id="page-3" class="page-nav">
+  <!-- Экран 3: Параметры расчёта -->
+  <div class="screen screen-3" id="screen-3">
+    <div class="header-row">
+      <label for="page-2" class="back-btn">← Назад</label>
+      <div class="brand" style="margin:0">Альфа-Банк</div>
+      <div class="header-spacer"></div>
+    </div>
+
+    <h2>Расчет экономики<br>для вашей сети</h2>
+
+    <div class="field-group">
+      <div class="field-label">Количество касс</div>
+      <div class="stepper">
+        <button type="button" class="stepper-btn minus" onclick="changeRegisters(-1)">−</button>
+        <div class="stepper-value" id="registers-count">50</div>
+        <button type="button" class="stepper-btn plus" onclick="changeRegisters(1)">+</button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Срок расчёта</div>
+      <div class="period-tabs">
+        <button type="button" class="period-tab" data-years="1" onclick="setPeriod(1)">1 год</button>
+        <button type="button" class="period-tab" data-years="2" onclick="setPeriod(2)">2 года</button>
+        <button type="button" class="period-tab active" data-years="3" onclick="setPeriod(3)">3 года</button>
+      </div>
+    </div>
+
+    <label for="page-4" class="btn-primary" id="btn-calculate" onclick="runCalculation()">Рассчитать →</label>
+
+    <p class="disclaimer">*Расчёт носит информационный характер и не является публичной офертой. Индивидуальные условия определяются в рамках переговоров с представителем банка.</p>
+  </div>
+
+  <input type="radio" name="page" id="page-4" class="page-nav">
+  <!-- Экран 4: Сравнение -->
+  <div class="screen screen-4" id="screen-4">
+    <div class="header-row">
+      <label for="page-3" class="back-btn">← Назад</label>
+      <div class="brand" style="margin:0">Альфа-Банк</div>
+      <div class="header-spacer"></div>
+    </div>
+
+    <div class="page-title">
+      <h2>Расчет для вашего бизнеса</h2>
+    </div>
+    <div class="subtitle" id="calc-subtitle">50 касс на 3 года</div>
+
+    <div class="comparison">
+      <div class="compare-card purchase">
+        <div class="card-header">🛒 Покупка</div>
+        <div class="card-total css-purchase">
+          <span class="t-0000">13,1 млн ₽</span>
+          <span class="t-1000">13,5 млн ₽</span>
+          <span class="t-0100">15,5 млн ₽</span>
+          <span class="t-1100">15,8 млн ₽</span>
+          <span class="t-0010">13,9 млн ₽</span>
+          <span class="t-1010">14,2 млн ₽</span>
+          <span class="t-0110">16,2 млн ₽</span>
+          <span class="t-1110">16,6 млн ₽</span>
+          <span class="t-0001">14,7 млн ₽</span>
+          <span class="t-1001">15 млн ₽</span>
+          <span class="t-0101">17 млн ₽</span>
+          <span class="t-1101">17,4 млн ₽</span>
+          <span class="t-0011">15,4 млн ₽</span>
+          <span class="t-1011">15,8 млн ₽</span>
+          <span class="t-0111">17,8 млн ₽</span>
+          <span class="t-1111">18,1 млн ₽</span>
+
+        </div>
+
+        <div class="line-item"><span>Касса</span><span class="val" id="p-kassa">150 000</span></div>
+        <div class="line-item" id="row-scanner"><span>Выносной сканер</span><span class="val">4 000</span></div>
+        <div class="line-item" id="row-pedestal"><span>Установочная тумба</span><span class="val">27 000</span></div>
+        <div class="line-item" id="row-scales"><span>Весы</span><span class="val">8 500</span></div>
+        <div class="line-item" id="row-install"><span>Монтаж оборудования</span><span class="val">17 500</span></div>
+        <div class="line-item bold"><span>Полная комплектация</span><span class="val css-p-full">
+          <span class="t-0000">7 500 000 ₽</span>
+          <span class="t-1000">7 700 000 ₽</span>
+          <span class="t-0100">8 850 000 ₽</span>
+          <span class="t-1100">9 050 000 ₽</span>
+          <span class="t-0010">7 925 000 ₽</span>
+          <span class="t-1010">8 125 000 ₽</span>
+          <span class="t-0110">9 275 000 ₽</span>
+          <span class="t-1110">9 475 000 ₽</span>
+          <span class="t-0001">8 375 000 ₽</span>
+          <span class="t-1001">8 575 000 ₽</span>
+          <span class="t-0101">9 725 000 ₽</span>
+          <span class="t-1101">9 925 000 ₽</span>
+          <span class="t-0011">8 800 000 ₽</span>
+          <span class="t-1011">9 000 000 ₽</span>
+          <span class="t-0111">10 150 000 ₽</span>
+          <span class="t-1111">10 350 000 ₽</span>
+
+        </span></div>
+        <div class="line-item"><span>Обслуживание на <span id="p-years">3</span> года</span><span class="val css-p-service">
+          <span class="t-0000">1 350 000.0 ₽</span>
+          <span class="t-1000">1 386 000.0 ₽</span>
+          <span class="t-0100">1 593 000.0 ₽</span>
+          <span class="t-1100">1 629 000.0 ₽</span>
+          <span class="t-0010">1 426 500.0 ₽</span>
+          <span class="t-1010">1 462 500.0 ₽</span>
+          <span class="t-0110">1 669 500.0 ₽</span>
+          <span class="t-1110">1 705 500.0 ₽</span>
+          <span class="t-0001">1 507 500.0 ₽</span>
+          <span class="t-1001">1 543 500.0 ₽</span>
+          <span class="t-0101">1 750 500.0 ₽</span>
+          <span class="t-1101">1 786 500.0 ₽</span>
+          <span class="t-0011">1 584 000.0 ₽</span>
+          <span class="t-1011">1 620 000.0 ₽</span>
+          <span class="t-0111">1 827 000.0 ₽</span>
+          <span class="t-1111">1 863 000.0 ₽</span>
+
+        </span></div>
+        <div class="line-item">
+          <span>Фондирование <span class="sub-note">(ключ. ставка + 3%)</span></span>
+          <span class="val css-p-funding">
+          <span class="t-0000">4 275 000.0 ₽</span>
+          <span class="t-1000">4 389 000.0 ₽</span>
+          <span class="t-0100">5 044 500.0 ₽</span>
+          <span class="t-1100">5 158 500.0 ₽</span>
+          <span class="t-0010">4 517 250.0 ₽</span>
+          <span class="t-1010">4 631 250.0 ₽</span>
+          <span class="t-0110">5 286 750.0 ₽</span>
+          <span class="t-1110">5 400 750.0 ₽</span>
+          <span class="t-0001">4 773 750.0 ₽</span>
+          <span class="t-1001">4 887 750.0 ₽</span>
+          <span class="t-0101">5 543 250.0 ₽</span>
+          <span class="t-1101">5 657 250.0 ₽</span>
+          <span class="t-0011">5 016 000.0 ₽</span>
+          <span class="t-1011">5 130 000.0 ₽</span>
+          <span class="t-0111">5 785 500.0 ₽</span>
+          <span class="t-1111">5 899 500.0 ₽</span>
+
+          </span>
+        </div>
+        <div class="line-item bold"><span>Касса + обслуживание</span><span class="val css-p-sum">
+          <span class="t-0000">13 125 000.0 ₽</span>
+          <span class="t-1000">13 475 000.0 ₽</span>
+          <span class="t-0100">15 487 500.0 ₽</span>
+          <span class="t-1100">15 837 500.0 ₽</span>
+          <span class="t-0010">13 868 750.0 ₽</span>
+          <span class="t-1010">14 218 750.0 ₽</span>
+          <span class="t-0110">16 231 250.0 ₽</span>
+          <span class="t-1110">16 581 250.0 ₽</span>
+          <span class="t-0001">14 656 250.0 ₽</span>
+          <span class="t-1001">15 006 250.0 ₽</span>
+          <span class="t-0101">17 018 750.0 ₽</span>
+          <span class="t-1101">17 368 750.0 ₽</span>
+          <span class="t-0011">15 400 000.0 ₽</span>
+          <span class="t-1011">15 750 000.0 ₽</span>
+          <span class="t-0111">17 762 500.0 ₽</span>
+          <span class="t-1111">18 112 500.0 ₽</span>
+        </span></div>
+        <div class="line-item bold"><span>Количество касс</span><span class="val" id="p-count">50</span></div>
+
+        <div class="warnings">
+          <div class="warning-item">⚠ Заморозка активов</div>
+          <div class="warning-item">⚠ Риск простоя</div>
+        </div>
+      </div>
+
+      <div class="vs-badge">vs</div>
+
+      <div class="compare-card subscription">
+        <div class="card-header">📋 Подписка</div>
+        <div class="card-total css-sub">
+          <span class="t-0000">12,6 млн ₽</span>
+          <span class="t-1000">12,8 млн ₽</span>
+          <span class="t-0100">13,9 млн ₽</span>
+          <span class="t-1100">14,1 млн ₽</span>
+          <span class="t-0010">13 млн ₽</span>
+          <span class="t-1010">13,2 млн ₽</span>
+          <span class="t-0110">14,3 млн ₽</span>
+          <span class="t-1110">14,5 млн ₽</span>
+          <span class="t-0001">13,5 млн ₽</span>
+          <span class="t-1001">13,7 млн ₽</span>
+          <span class="t-0101">14,8 млн ₽</span>
+          <span class="t-1101">15 млн ₽</span>
+          <span class="t-0011">13,9 млн ₽</span>
+          <span class="t-1011">14,1 млн ₽</span>
+          <span class="t-0111">15,2 млн ₽</span>
+          <span class="t-1111">15,4 млн ₽</span>
+
+        </div>
+
+        <div class="line-item"><span>Касса в месяц</span><span class="val css-s-monthly">
+          <span class="t-0000">6 990 ₽</span>
+          <span class="t-1000">7 100 ₽</span>
+          <span class="t-0100">7 720 ₽</span>
+          <span class="t-1100">7 830 ₽</span>
+          <span class="t-0010">7 220 ₽</span>
+          <span class="t-1010">7 330 ₽</span>
+          <span class="t-0110">7 950 ₽</span>
+          <span class="t-1110">8 060 ₽</span>
+          <span class="t-0001">7 480 ₽</span>
+          <span class="t-1001">7 590 ₽</span>
+          <span class="t-0101">8 210 ₽</span>
+          <span class="t-1101">8 320 ₽</span>
+          <span class="t-0011">7 710 ₽</span>
+          <span class="t-1011">7 820 ₽</span>
+          <span class="t-0111">8 440 ₽</span>
+          <span class="t-1111">8 550 ₽</span>
+
+        </span></div>
+        <div class="line-item"><span>Кол-во месяцев</span><span class="val" id="s-months">36</span></div>
+        <div class="line-item"><span>Кол-во касс</span><span class="val" id="s-count">50</span></div>
+
+        <div class="benefits">
+          <div class="benefit-item"><span class="check">✓</span><span>Специальные условия на торговый эквайринг</span></div>
+          <div class="benefit-item"><span class="check">✓</span><span>Интеграция с вашей системой</span></div>
+          <div class="benefit-item"><span class="check">✓</span><span>Поддержка 24/7</span></div>
+          <div class="benefit-item"><span class="check">✓</span><span>Выездные инженеры</span></div>
+          <div class="benefit-item"><span class="check">✓</span><span>Замена оборудования</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-banner">
+      <div class="insight-icon">💰</div>
+      <div class="insight-text">
+        <strong class="css-insight" id="insight-amount">
+        <span class="t-0000">543 000.0 ₽ остаются в обороте</span>
+        <span class="t-1000">695 000.0 ₽ остаются в обороте</span>
+        <span class="t-0100">1,6 млн ₽ остаются в обороте</span>
+        <span class="t-1100">1,7 млн ₽ остаются в обороте</span>
+        <span class="t-0010">872 750.0 ₽ остаются в обороте</span>
+        <span class="t-1010">1 млн ₽ остаются в обороте</span>
+        <span class="t-0110">1,9 млн ₽ остаются в обороте</span>
+        <span class="t-1110">2,1 млн ₽ остаются в обороте</span>
+        <span class="t-0001">1,2 млн ₽ остаются в обороте</span>
+        <span class="t-1001">1,3 млн ₽ остаются в обороте</span>
+        <span class="t-0101">2,2 млн ₽ остаются в обороте</span>
+        <span class="t-1101">2,4 млн ₽ остаются в обороте</span>
+        <span class="t-0011">1,5 млн ₽ остаются в обороте</span>
+        <span class="t-1011">1,7 млн ₽ остаются в обороте</span>
+        <span class="t-0111">2,6 млн ₽ остаются в обороте</span>
+        <span class="t-1111">2,7 млн ₽ остаются в обороте</span>
+
+        </strong>
+        <span>Инвестируйте в маркетинг, закупку товара или открытие новых точек</span>
+      </div>
+    </div>
+
+    <div class="screen-4-actions">
+      <label for="page-3" class="btn-secondary">← Изменить</label>
+      <label for="page-5" class="btn-primary" style="margin-top:0">Получить расчёт →</label>
+    </div>
+  </div>
+
+  <input type="radio" name="page" id="page-5" class="page-nav">
+  <!-- Экран 5: Контакты -->
+  <div class="screen screen-5" id="screen-5">
+    <div class="header-row">
+      <label for="page-4" class="back-btn">← Назад</label>
+      <div class="brand" style="margin:0">Альфа-Банк</div>
+      <div class="header-spacer"></div>
+    </div>
+
+    <h2>Забрать расчёт с собой</h2>
+    <p class="form-subtitle">Оставьте контакты — вышлем детальный PDF на почту</p>
+
+    <div class="file-warning" id="file-warning">
+      iPhone блокирует отправку из файла. Запустите на компьютере «Запуск для iPhone.bat» и откройте ссылку в Safari.
+    </div>
+
+    <form id="contact-form" novalidate onsubmit="return false;">
+      <div class="form-group">
+        <label for="name">Имя</label>
+        <input type="text" id="name" placeholder="Иван" required>
+      </div>
+      <div class="form-group">
+        <label for="company">Компания</label>
+        <input type="text" id="company" placeholder="Альфа-Банк">
+      </div>
+      <div class="form-group">
+        <label for="phone">Телефон</label>
+        <input type="tel" id="phone" placeholder="+7 (999) 000-00-00" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="name@company.ru" required>
+      </div>
+
+    </form>
+
+    <label class="btn-primary" id="submit-btn" onclick="submitForm(); return false;">
+      <span id="submit-btn-text">Получить расчёт →</span>
+    </label>
+
+    <div class="error-toast" id="error-toast"></div>
+
+    <div class="success-toast" id="success-toast">
+      <div class="success-title">✓ Отправлено!</div>
+      <p>Расчёт отправлен на вашу почту.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Шаблон для PNG-расчёта (рендерится off-screen) -->
+<div class="email-image-render" aria-hidden="true">
+  <div id="email-image-card">
+    <div class="e-brand">Альфа-Банк</div>
+    <div class="e-title">Расчет для вашего бизнеса</div>
+    <div class="e-subtitle" id="img-subtitle">50 касс на 3 года</div>
+
+    <div class="e-contact" id="img-contact"></div>
+
+    <div class="e-comparison">
+      <div class="e-card purchase">
+        <div class="e-card-head">🛒 Покупка</div>
+        <div class="e-card-total" id="img-purchase-total">50 млн ₽</div>
+        <div class="e-line"><span>Касса</span><span>150 000</span></div>
+        <div class="e-line" id="img-line-scanner"><span>Выносной сканер</span><span>4 000</span></div>
+        <div class="e-line" id="img-line-pedestal"><span>Установочная тумба</span><span>27 000</span></div>
+        <div class="e-line" id="img-line-scales"><span>Весы</span><span>8 500</span></div>
+        <div class="e-line" id="img-line-install"><span>Монтаж оборудования</span><span>17 500</span></div>
+        <div class="e-line bold"><span>Полная комплектация</span><span id="img-full">—</span></div>
+        <div class="e-line"><span>Обслуживание</span><span id="img-service">—</span></div>
+        <div class="e-line bold"><span>Итого</span><span id="img-purchase-sum">—</span></div>
+        <div class="e-warn">⚠ Заморозка активов · ⚠ Риск простоя</div>
+      </div>
+      <div class="e-vs">vs</div>
+      <div class="e-card subscription">
+        <div class="e-card-head">📋 Подписка</div>
+        <div class="e-card-total" id="img-sub-total">30 млн ₽</div>
+        <div class="e-line"><span>Касса в месяц</span><span id="img-monthly">—</span></div>
+        <div class="e-line"><span>Кол-во месяцев</span><span id="img-months">36</span></div>
+        <div class="e-line"><span>Кол-во касс</span><span id="img-registers">50</span></div>
+        <div style="margin-top:10px">
+          <div class="e-benefit"><span>✓</span><span>Спец. условия на эквайринг</span></div>
+          <div class="e-benefit"><span>✓</span><span>Интеграция с вашей системой</span></div>
+          <div class="e-benefit"><span>✓</span><span>Поддержка 24/7</span></div>
+          <div class="e-benefit"><span>✓</span><span>Замена оборудования</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="e-insight">
+      <div class="e-insight-icon">💰</div>
+      <div class="e-insight-text">
+        <strong id="img-insight">52,5 млн ₽ остаются в обороте</strong>
+        <span>Инвестируйте в маркетинг, закупку товара или открытие новых точек</span>
+      </div>
+    </div>
+
+    <div class="e-disclaimer">*Расчёт носит информационный характер и не является публичной офертой.</div>
+  </div>
+</div>
+
+<script>
+  /*
+   * ── Настройка отправки ──
+   *
+   * EmailJS → Email Templates → Content type: HTML (не Plain Text!)
+   * To Email: {{to_email}}
+   * Subject:  Расчёт экономики — кассы самообслуживания
+   *
+   * Content (вставьте HTML ниже в редактор шаблона EmailJS):
+   * ─────────────────────────────────────────────────────────
+   * <p style="font-family:Arial,sans-serif;color:#333;font-size:15px">
+   *   Здравствуйте, <strong>{{user_name}}</strong>! Ниже — ваш расчёт.
+   * </p>
+   * <div style="background:#000;padding:16px;border-radius:16px;text-align:center">
+   *   <img src="{{image_url}}" alt="Расчёт" width="680"
+   *        style="max-width:100%;height:auto;border-radius:12px">
+   * </div>
+   * <p style="font-family:Arial,sans-serif;color:#888;font-size:12px;margin-top:16px">
+   *   Покупка: {{purchase_total}} · Подписка: {{subscription_total}} · Экономия: {{savings}}
+   * </p>
+   * <p style="font-family:Arial,sans-serif;color:#999;font-size:11px">
+   *   {{registers}} касс · {{years_label}} · {{options}}
+   * </p>
+   * ─────────────────────────────────────────────────────────
+   *
+   * ImgBB (https://api.imgbb.com) — API Key для загрузки PNG-картинки
+   */
+  const EMAILJS = {
+    publicKey:  'YOUR_PUBLIC_KEY',
+    serviceId:  'YOUR_SERVICE_ID',
+    templateId: 'YOUR_TEMPLATE_ID',
+  };
+
+  const IMGBB_API_KEY = 'YOUR_IMGBB_API_KEY';
+
+  function isEmailJsConfigured() {
+    return EMAILJS.publicKey !== 'YOUR_PUBLIC_KEY'
+      && EMAILJS.serviceId !== 'YOUR_SERVICE_ID'
+      && EMAILJS.templateId !== 'YOUR_TEMPLATE_ID';
+  }
+
+  function getOptionsList(opts) {
+    const labels = {
+      scanner: 'Выносной сканер',
+      pedestal: 'Установочная тумба',
+      scales: 'Весы',
+      install: 'Монтаж оборудования',
+    };
+    const selected = Object.entries(opts).filter(([, v]) => v).map(([k]) => labels[k]);
+    return selected.length ? selected.join(', ') : 'Базовая комплектация';
+  }
+
+  function isImgbbConfigured() {
+    return IMGBB_API_KEY && IMGBB_API_KEY !== 'YOUR_IMGBB_API_KEY';
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function uploadImageToImgBB(blob) {
+    const base64 = await blobToBase64(blob);
+    const body = new FormData();
+    body.append('key', IMGBB_API_KEY);
+    body.append('image', base64);
+    body.append('name', 'raschet-alfa-bank');
+
+    const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body });
+    const json = await res.json();
+    if (!json.success) {
+      throw new Error((json.error && json.error.message) || 'Не удалось загрузить картинку');
+    }
+    return json.data.url;
+  }
+
+  function populateEmailImageCard(name, company, phone, c) {
+    document.getElementById('img-subtitle').textContent =
+      `${c.registers} касс на ${c.yearsLabel}`;
+
+    document.getElementById('img-contact').innerHTML = [
+      `<strong>${name}</strong>`,
+      company ? company : null,
+      phone,
+      `Комплектация: ${getOptionsList(c.options)}`,
+    ].filter(Boolean).join(' · ');
+
+    document.getElementById('img-purchase-total').textContent = c.purchaseTotalFormatted;
+    document.getElementById('img-sub-total').textContent = c.subscriptionTotalFormatted;
+    document.getElementById('img-full').textContent = formatMoney(c.fullKit);
+    document.getElementById('img-service').textContent = formatMoney(c.serviceTotal);
+    document.getElementById('img-purchase-sum').textContent = c.purchaseTotalFormatted;
+    document.getElementById('img-monthly').textContent = c.monthlyFormatted;
+    document.getElementById('img-months').textContent = c.months;
+    document.getElementById('img-registers').textContent = c.registers;
+    document.getElementById('img-insight').textContent =
+      c.savingsFormatted + ' остаются в обороте';
+
+    ['scanner', 'pedestal', 'scales', 'install'].forEach(key => {
+      document.getElementById('img-line-' + key).style.display =
+        c.options[key] ? '' : 'none';
+    });
+  }
+
+  async function generateCalculationImage() {
+    const card = document.getElementById('email-image-card');
+    const canvas = await html2canvas(card, {
+      scale: 2,
+      backgroundColor: '#000000',
+      logging: false,
+      useCORS: true,
+    });
+    return new Promise(resolve => {
+      canvas.toBlob(blob => resolve(blob), 'image/png', 0.92);
+    });
+  }
+
+  function setSubmitText(text) {
+    var el = document.getElementById('submit-btn-text');
+    if (el) el.textContent = text;
+  }
+
+  function setSubmitDisabled(disabled) {
+    var btn = document.getElementById('submit-btn');
+    if (btn) btn.classList.toggle('is-disabled', disabled);
+  }
+
+  function initPage() {
+    if (location.protocol === 'file:') {
+      var warn = document.getElementById('file-warning');
+      if (warn) warn.classList.add('visible');
+    }
+
+    var page4 = document.getElementById('page-4');
+    if (page4) {
+      page4.addEventListener('change', function() {
+        if (page4.checked) runCalculation();
+      });
+    }
+  }
+
+  async function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      if (document.querySelector('script[src="' + src + '"]')) {
+        resolve();
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = function() { reject(new Error('Не удалось загрузить ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureEmailLibs() {
+    if (typeof html2canvas === 'undefined') {
+      await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+    }
+    if (typeof emailjs === 'undefined') {
+      await loadScript('https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js');
+    }
+  }
+
+  async function submitForm(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    var errorToast = document.getElementById('error-toast');
+    var successToast = document.getElementById('success-toast');
+
+    errorToast.classList.remove('visible');
+    successToast.classList.remove('visible');
+    setSubmitText('Проверка...');
+
+    var name = document.getElementById('name').value.trim();
+    var company = document.getElementById('company').value.trim();
+    var phone = document.getElementById('phone').value.trim();
+    var email = document.getElementById('email').value.trim();
+
+    if (!name || !phone || !email) {
+      errorToast.textContent = 'Заполните имя, телефон и email.';
+      errorToast.classList.add('visible');
+      setSubmitText('Получить расчёт →');
+      return;
+    }
+
+    if (location.protocol === 'file:') {
+      errorToast.textContent = 'Отправка с iPhone не работает из файла. Запустите «Запуск для iPhone.bat» на компьютере.';
+      errorToast.classList.add('visible');
+      setSubmitText('Получить расчёт →');
+      return;
+    }
+
+    if (!calcResult) {
+      errorToast.textContent = 'Сначала пройдите все шаги калькулятора и выполните расчёт.';
+      errorToast.classList.add('visible');
+      setSubmitText('Получить расчёт →');
+      return;
+    }
+
+    if (!isEmailJsConfigured()) {
+      errorToast.innerHTML = 'Укажите ключи EmailJS в начале файла <code>kassa-mockup.html</code> (см. инструкцию в комментарии).<br><a href="https://www.emailjs.com" target="_blank" style="color:#ff8a80">emailjs.com →</a>';
+      errorToast.classList.add('visible');
+      setSubmitText('Получить расчёт →');
+      return;
+    }
+
+    if (!isImgbbConfigured()) {
+      errorToast.textContent = 'Укажите IMGBB_API_KEY в kassa-mockup.html для отправки картинки.';
+      errorToast.classList.add('visible');
+      setSubmitText('Получить расчёт →');
+      return;
+    }
+
+    setSubmitDisabled(true);
+    setSubmitText('Формируем расчёт...');
+
+    try {
+      await ensureEmailLibs();
+      populateEmailImageCard(name, company, phone, calcResult);
+      setSubmitText('Формируем картинку...');
+
+      var imageBlob = await generateCalculationImage();
+
+      setSubmitText('Загружаем...');
+      var imageUrl = await uploadImageToImgBB(imageBlob);
+
+      setSubmitText('Отправка...');
+
+      emailjs.init(EMAILJS.publicKey);
+
+      await emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
+        to_email: email,
+        user_name: name,
+        image_url: imageUrl,
+        purchase_total: calcResult.purchaseTotalFormatted,
+        subscription_total: calcResult.subscriptionTotalFormatted,
+        savings: calcResult.savingsFormatted,
+        registers: calcResult.registers,
+        years_label: calcResult.yearsLabel,
+        options: getOptionsList(calcResult.options),
+      });
+
+      successToast.classList.add('visible');
+      setSubmitText('Отправлено ✓');
+    } catch (err) {
+      console.error(err);
+      errorToast.textContent = 'Не удалось отправить. Проверьте шаблон EmailJS: тип HTML + переменные {{image_url}}, {{user_name}} и др.';
+      errorToast.classList.add('visible');
+      setSubmitDisabled(false);
+      setSubmitText('Получить расчёт →');
+    }
+  }
+
+  window.submitForm = submitForm;
+  initPage();
+</script>
+
+</body>
+</html>

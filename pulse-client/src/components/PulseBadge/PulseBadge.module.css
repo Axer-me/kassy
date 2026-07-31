@@ -1,0 +1,86 @@
+.badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+  position: relative;
+  padding: 4px 8px;
+}
+
+.badge__label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--alfa-gray-700);
+  white-space: nowrap;
+}
+
+.badge__circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--alfa-white);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.2),
+    0 0 0 5px rgba(255, 255, 255, 0.95),
+    0 0 0 8px rgba(0, 0, 0, 0.07);
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  padding: 14px 16px;
+  background: var(--alfa-white);
+  border: 1px solid var(--alfa-gray-300);
+  border-radius: var(--alfa-radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s, visibility 0.15s;
+}
+
+.badge:hover .popover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.popover__score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.popover__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.popover__value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.popover__status {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.popover__text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--alfa-gray-700);
+}
