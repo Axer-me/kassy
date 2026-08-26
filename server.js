@@ -58,14 +58,23 @@ function createTransporter() {
       user: requireEnv('SMTP_USER'),
       pass: requireEnv('SMTP_PASS'),
     },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
     pool: true,
     maxConnections: 1,
     maxMessages: 100,
   });
 }
 
-const transporter = createTransporter();
-const smtpFrom = process.env.SMTP_FROM || requireEnv('SMTP_USER');
+let transporter = null;
+let smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+try {
+  transporter = createTransporter();
+  smtpFrom = process.env.SMTP_FROM || requireEnv('SMTP_USER');
+} catch (err) {
+  console.warn(`SMTP не инициализирован: ${err.message}`);
+}
 
 fs.mkdirSync(path.dirname(path.resolve(DB_PATH)), { recursive: true });
 const db = new Database(DB_PATH);
@@ -335,6 +344,9 @@ function logSubmission({ name, company, phone, email, calculation }) {
 }
 
 async function sendCalculationEmail({ name, company, phone, email, calculation }) {
+  if (!transporter) {
+    throw new Error('SMTP не настроен');
+  }
   await transporter.sendMail({
     from: smtpFrom,
     to: email,
@@ -395,7 +407,7 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(ROOT, 'index.html'));
 });
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`\n  Калькулятор:  http://localhost:${PORT}/`);
   console.log(`  API:          http://localhost:${PORT}/api/send-calculation`);
   console.log(`  Логи заявок:  http://localhost:${PORT}/api/submissions`);
@@ -404,7 +416,21 @@ app.listen(PORT, HOST, () => {
   console.log(`  Заявок в БД:  ${existing}`);
   console.log(`  Слушает:      ${HOST}:${PORT}\n`);
 
+  if (!transporter) {
+    console.warn('  SMTP:         пропущен — нет настроек\n');
+    return;
+  }
+
   transporter.verify()
     .then(() => console.log('  SMTP:         подключение OK\n'))
     .catch((err) => console.warn(`  SMTP:         проверка не прошла — ${err.message}\n`));
 });
+
+function shutdown(signal) {
+  console.log(`Получен ${signal}, останавливаю сервер`);
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 4000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
