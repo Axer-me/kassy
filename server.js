@@ -5,17 +5,24 @@ import nodemailer from 'nodemailer';
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = process.env.PORT || 3456;
+const PORT = Number(process.env.PORT || 3456);
+const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = __dirname;
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'submissions.db');
+const SUBMISSIONS_USER = process.env.SUBMISSIONS_USER || 'admin';
+const SUBMISSIONS_PASSWORD = process.env.SUBMISSIONS_PASSWORD || 'KSO_DEMO_DAY_LOGS';
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(ROOT));
+app.use('/assets', express.static(path.join(ROOT, 'assets')));
+app.get('/favicon.svg', (_req, res) => {
+  res.sendFile(path.join(ROOT, 'favicon.svg'));
+});
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -43,6 +50,7 @@ function createTransporter() {
 const transporter = createTransporter();
 const smtpFrom = process.env.SMTP_FROM || requireEnv('SMTP_USER');
 
+fs.mkdirSync(path.dirname(path.resolve(DB_PATH)), { recursive: true });
 const db = new Database(DB_PATH);
 db.exec(`
   CREATE TABLE IF NOT EXISTS form_submissions (
@@ -255,6 +263,44 @@ function buildEmailHtml({ name, company, phone, calculation: c }) {
 </html>`;
 }
 
+function safeEqual(a, b) {
+  const left = Buffer.from(String(a), 'utf8');
+  const right = Buffer.from(String(b), 'utf8');
+  if (left.length !== right.length) {
+    crypto.timingSafeEqual(left, left);
+    return false;
+  }
+  return crypto.timingSafeEqual(left, right);
+}
+
+function requireSubmissionsAuth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const [scheme, encoded] = header.split(' ');
+  if (scheme !== 'Basic' || !encoded) {
+    res.set('WWW-Authenticate', 'Basic realm="KSO submissions"');
+    return res.status(401).send('Требуется авторизация.');
+  }
+
+  let decoded = '';
+  try {
+    decoded = Buffer.from(encoded, 'base64').toString('utf8');
+  } catch {
+    res.set('WWW-Authenticate', 'Basic realm="KSO submissions"');
+    return res.status(401).send('Требуется авторизация.');
+  }
+
+  const sep = decoded.indexOf(':');
+  const login = sep === -1 ? decoded : decoded.slice(0, sep);
+  const password = sep === -1 ? '' : decoded.slice(sep + 1);
+
+  if (!safeEqual(login, SUBMISSIONS_USER) || !safeEqual(password, SUBMISSIONS_PASSWORD)) {
+    res.set('WWW-Authenticate', 'Basic realm="KSO submissions"');
+    return res.status(401).send('Неверный логин или пароль.');
+  }
+
+  next();
+}
+
 function logSubmission({ name, company, phone, email, calculation }) {
   insertSubmission.run({
     name,
@@ -310,7 +356,7 @@ app.post('/api/send-calculation', (req, res) => {
   }
 });
 
-app.get('/api/submissions', (_req, res) => {
+app.get('/api/submissions', requireSubmissionsAuth, (_req, res) => {
   const rows = db.prepare(`
     SELECT id, created_at, name, company, phone, email, calculation_json
     FROM form_submissions
@@ -324,10 +370,12 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(ROOT, 'index.html'));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`\n  Калькулятор:  http://localhost:${PORT}/`);
   console.log(`  API:          http://localhost:${PORT}/api/send-calculation`);
-  console.log(`  База данных:  ${DB_PATH}\n`);
+  console.log(`  Логи заявок:  http://localhost:${PORT}/api/submissions`);
+  console.log(`  База данных:  ${DB_PATH}`);
+  console.log(`  Слушает:      ${HOST}:${PORT}\n`);
 
   transporter.verify()
     .then(() => console.log('  SMTP:         подключение OK\n'))

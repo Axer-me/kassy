@@ -31,6 +31,7 @@ npm start
 | `.env` | SMTP и порт (**локально, не в git**) |
 | `submissions.db` | Лог заявок (создаётся автоматически) |
 | `package.json` | Зависимости и `npm start` |
+| `railway.json` | Команда запуска на Railway |
 
 ---
 
@@ -39,29 +40,64 @@ npm start
 | Метод | URL | Описание |
 |-------|-----|----------|
 | `POST` | `/api/send-calculation` | Отправка HTML-письма + запись в БД |
-| `GET` | `/api/submissions` | Последние 200 заявок (JSON) |
+| `GET` | `/api/submissions` | Последние 200 заявок (JSON), **Basic Auth** |
+
+Логин к логам: `admin` / `KSO_DEMO_DAY_LOGS` (можно переопределить через `SUBMISSIONS_USER` и `SUBMISSIONS_PASSWORD`).
 
 ---
 
 ## База данных
 
-SQLite, файл `submissions.db`, таблица `form_submissions`. Просмотр: http://localhost:3456/api/submissions
+SQLite, файл `submissions.db`, таблица `form_submissions`. Просмотр: http://localhost:3456/api/submissions (браузер спросит логин и пароль).
 
 ---
 
 ## SMTP (.env)
 
 ```env
-SMTP_HOST=smtp.yandex.ru
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_SECURE=true
-SMTP_USER=your@yandex.ru
+SMTP_USER=your@gmail.com
 SMTP_PASS=пароль_приложения
-SMTP_FROM=Альфа-Банк <your@yandex.ru>
+SMTP_FROM=Альфа-Банк <your@gmail.com>
 PORT=3456
 ```
 
-Пароль приложения Yandex: [id.yandex.ru/security/app-passwords](https://id.yandex.ru/security/app-passwords)
+Пароль приложения Gmail: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+
+---
+
+## Деплой на Railway
+
+1. Зайдите на [railway.app](https://railway.app) и войдите через GitHub.
+2. **New Project** → **Deploy from GitHub repo** → `Axer-me/kassy`. Если репозитория нет в списке: **Configure GitHub App** и выдайте доступ.
+3. Откройте сервис → **Variables** → добавьте переменные из раздела ниже.
+4. **Settings → Volume** → добавьте том, mount path: `/data`.
+5. В Variables задайте `DATABASE_PATH=/data/submissions.db`.
+6. **Settings → Networking → Generate Domain**.
+7. Дождитесь статуса **Success** в Deployments и откройте выданный `https://….up.railway.app`.
+
+Логи заявок: `https://ВАШ-ДОМЕН/api/submissions` — логин `admin`, пароль `KSO_DEMO_DAY_LOGS`.
+
+### Переменные окружения на Railway
+
+| Ключ | Пример |
+|------|--------|
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `465` |
+| `SMTP_SECURE` | `true` |
+| `SMTP_USER` | ваш Gmail |
+| `SMTP_PASS` | пароль приложения Google |
+| `SMTP_FROM` | `Альфа-Банк <ваш@gmail.com>` |
+| `DATABASE_PATH` | `/data/submissions.db` |
+| `HOST` | `0.0.0.0` |
+| `SUBMISSIONS_USER` | `admin` |
+| `SUBMISSIONS_PASSWORD` | `KSO_DEMO_DAY_LOGS` |
+
+`PORT` Railway подставляет сам — не задавайте вручную.
+
+Без Volume файл SQLite пропадёт после рестарта сервиса. Письма зависят от SMTP: Gmail иногда блокирует вход с IP датацентра.
 
 ---
 
