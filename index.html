@@ -141,6 +141,20 @@
       var inCirculation = purchaseTotal - monthlyPayment;
       var savings = Math.max(0, purchaseTotal - subscriptionTotal);
 
+      var purchaseLines = [
+        { label: 'Касса самообслуживания', unit: PURCHASE_PRICES.kassa, qty: registers, total: PURCHASE_PRICES.kassa * registers }
+      ];
+      if (opts.scanner) purchaseLines.push({ label: 'Выносной сканер', unit: PURCHASE_PRICES.scanner, qty: registers, total: PURCHASE_PRICES.scanner * registers });
+      if (opts.pedestal) purchaseLines.push({ label: 'Установочная тумба', unit: PURCHASE_PRICES.pedestal, qty: registers, total: PURCHASE_PRICES.pedestal * registers });
+      if (opts.scales) purchaseLines.push({ label: 'Весы', unit: PURCHASE_PRICES.scales, qty: registers, total: PURCHASE_PRICES.scales * registers });
+      if (opts.install) purchaseLines.push({ label: 'Монтаж оборудования', unit: PURCHASE_PRICES.install, qty: registers, total: PURCHASE_PRICES.install * registers });
+
+      var subscriptionMonthlyLines = [{ label: 'Базовый тариф', amount: BASE_MONTHLY }];
+      if (opts.scanner) subscriptionMonthlyLines.push({ label: 'Выносной сканер', amount: optionPrices.scanner });
+      if (opts.pedestal) subscriptionMonthlyLines.push({ label: 'Установочная тумба', amount: optionPrices.pedestal });
+      if (opts.scales) subscriptionMonthlyLines.push({ label: 'Весы', amount: optionPrices.scales });
+      if (opts.install) subscriptionMonthlyLines.push({ label: 'Монтаж оборудования', amount: optionPrices.install });
+
       calcResult = {
         registers: registers,
         years: years,
@@ -152,10 +166,14 @@
         monthlyPaymentFormatted: formatMoney(monthlyPayment) + ' \u20bd/мес',
         options: opts,
         unitHardware: unitHardware,
+        unitHardwareFormatted: formatMoney(unitHardware) + ' \u20bd',
         unitPurchaseTotal: unitPurchaseTotal,
         unitPurchaseTotalFormatted: formatMoney(unitPurchaseTotal) + ' \u20bd',
         fullKit: fullKit,
+        fullKitFormatted: formatMoney(fullKit) + ' \u20bd',
+        serviceMonthly: SERVICE_MONTHLY,
         serviceTotal: serviceTotal,
+        serviceTotalFormatted: formatMoney(serviceTotal) + ' \u20bd',
         purchaseTotal: purchaseTotal,
         subscriptionTotal: subscriptionTotal,
         inCirculation: inCirculation,
@@ -163,7 +181,9 @@
         purchaseTotalFormatted: formatMillions(purchaseTotal),
         subscriptionTotalFormatted: formatMillions(subscriptionTotal),
         inCirculationFormatted: formatMillions(inCirculation),
-        savingsFormatted: formatMillions(savings)
+        savingsFormatted: formatMillions(savings),
+        purchaseLines: purchaseLines,
+        subscriptionMonthlyLines: subscriptionMonthlyLines
       };
 
       updateResultsUI(calcResult);
@@ -891,6 +911,12 @@
 
     .form-group input:focus { border-color: var(--red); }
     .form-group input::placeholder { color: #555; }
+    .form-group input.input-invalid { border-color: #ff5252; }
+    .form-group .field-hint {
+      font-size: 11px;
+      color: #666;
+      margin-top: 6px;
+    }
 
     .success-toast {
       background: var(--surface);
@@ -1204,7 +1230,7 @@
     </div>
 
     <h2>Забрать расчёт с собой</h2>
-    <p class="form-subtitle">Оставьте контакты — вышлем детальный PDF на почту</p>
+    <p class="form-subtitle">Оставьте контакты — вышлем на почту детальный расчёт с разбивкой по статьям</p>
 
     <div class="file-warning" id="file-warning">
       Для отправки email нужен запущенный сервер. Используйте «Запуск мокапа касс.bat» или «Запуск для iPhone.bat».
@@ -1212,20 +1238,22 @@
 
     <form id="contact-form" novalidate onsubmit="return false;">
       <div class="form-group">
-        <label for="name">Имя</label>
-        <input type="text" id="name" placeholder="Иван" required>
+        <label for="name">ФИО</label>
+        <input type="text" id="name" placeholder="Иванов Иван Иванович" autocomplete="name" inputmode="text">
+        <div class="field-hint">До 100 символов</div>
       </div>
       <div class="form-group">
         <label for="company">Компания</label>
-        <input type="text" id="company" placeholder="Альфа-Банк">
+        <input type="text" id="company" placeholder="Альфа-Банк" autocomplete="organization">
+        <div class="field-hint">До 150 символов</div>
       </div>
       <div class="form-group">
         <label for="phone">Телефон</label>
-        <input type="tel" id="phone" placeholder="+7 (999) 000-00-00" required>
+        <input type="tel" id="phone" placeholder="+7 (999) 000-00-00" autocomplete="tel" inputmode="tel">
       </div>
       <div class="form-group">
         <label for="email">Email</label>
-        <input type="email" id="email" placeholder="name@company.ru" required>
+        <input type="email" id="email" placeholder="name@company.ru" autocomplete="email" inputmode="email">
       </div>
 
     </form>
@@ -1238,7 +1266,7 @@
 
     <div class="success-toast" id="success-toast">
       <div class="success-title">✓ Отправлено!</div>
-      <p>Расчёт отправлен на вашу почту.</p>
+      <p>Детальный расчёт отправлен на вашу почту.</p>
     </div>
   </div>
 
@@ -1263,6 +1291,7 @@
     });
     updateMonthlyTotal();
     initSkbLandingScale();
+    initContactForm();
 
     var page4 = document.getElementById('page-4');
     if (page4) {
@@ -1298,6 +1327,176 @@
     window.addEventListener('load', fitSkbLandingScale);
   }
 
+  var NAME_MAX_LEN = 100;
+  var COMPANY_MAX_LEN = 150;
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+  var FIO_RE = /^[\p{L}\s.\-']{2,100}$/u;
+
+  function setFieldInvalid(id, invalid) {
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle('input-invalid', !!invalid);
+  }
+
+  function limitFieldLength(input, maxLen) {
+    var lastValid = input.value;
+
+    input.addEventListener('beforeinput', function(e) {
+      if (e.inputType === 'insertFromPaste' || e.inputType === 'insertReplacementText') {
+        var start = input.selectionStart != null ? input.selectionStart : input.value.length;
+        var end = input.selectionEnd != null ? input.selectionEnd : input.value.length;
+        var inserted = e.data || '';
+        var next = input.value.slice(0, start) + inserted + input.value.slice(end);
+        if (next.length > maxLen) {
+          e.preventDefault();
+          setFieldInvalid(input.id, true);
+          var toast = document.getElementById('error-toast');
+          if (toast) {
+            toast.textContent = 'Максимум ' + maxLen + ' символов — текст не обрезан, сократите вручную.';
+            toast.classList.add('visible');
+          }
+        }
+      }
+    });
+
+    input.addEventListener('input', function() {
+      if (input.value.length > maxLen) {
+        input.value = lastValid;
+        setFieldInvalid(input.id, true);
+        return;
+      }
+      lastValid = input.value;
+      if (input.value.length < maxLen) setFieldInvalid(input.id, false);
+    });
+  }
+
+  function phoneDigitsOnly(value) {
+    var digits = String(value || '').replace(/\D/g, '');
+    if (digits.charAt(0) === '8') digits = '7' + digits.slice(1);
+    if (digits.charAt(0) !== '7') digits = '7' + digits;
+    return digits.slice(0, 11);
+  }
+
+  function formatRuPhone(digits) {
+    if (!digits) return '';
+    if (digits.length === 1) return '+7';
+    var rest = digits.slice(1);
+    var out = '+7';
+    if (rest.length > 0) out += ' (' + rest.slice(0, 3);
+    if (rest.length >= 3) out += ')';
+    if (rest.length > 3) out += ' ' + rest.slice(3, 6);
+    if (rest.length > 6) out += '-' + rest.slice(6, 8);
+    if (rest.length > 8) out += '-' + rest.slice(8, 10);
+    return out;
+  }
+
+  function initPhoneField(input) {
+    function applyPhoneMask() {
+      var digits = phoneDigitsOnly(input.value);
+      var formatted = formatRuPhone(digits);
+      input.value = formatted;
+      setFieldInvalid('phone', digits.length > 0 && digits.length < 11);
+    }
+
+    input.addEventListener('focus', function() {
+      if (!input.value.trim()) input.value = '+7 (';
+    });
+
+    input.addEventListener('blur', function() {
+      var digits = phoneDigitsOnly(input.value);
+      if (digits.length <= 1) input.value = '';
+      setFieldInvalid('phone', digits.length > 0 && digits.length < 11);
+    });
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && (input.value === '+7 (' || input.value === '+7')) {
+        e.preventDefault();
+        input.value = '';
+      }
+    });
+
+    input.addEventListener('input', applyPhoneMask);
+    input.addEventListener('paste', function(e) {
+      e.preventDefault();
+      var pasted = (e.clipboardData || window.clipboardData).getData('text');
+      var digits = phoneDigitsOnly(pasted);
+      input.value = formatRuPhone(digits);
+      setFieldInvalid('phone', digits.length > 0 && digits.length < 11);
+    });
+  }
+
+  function validateContactFields() {
+    var name = document.getElementById('name').value.trim();
+    var company = document.getElementById('company').value.trim();
+    var phoneDigits = phoneDigitsOnly(document.getElementById('phone').value);
+    var phone = formatRuPhone(phoneDigits);
+    var email = document.getElementById('email').value.trim();
+
+    setFieldInvalid('name', false);
+    setFieldInvalid('company', false);
+    setFieldInvalid('phone', false);
+    setFieldInvalid('email', false);
+
+    if (!name) {
+      setFieldInvalid('name', true);
+      return { ok: false, message: 'Укажите ФИО.' };
+    }
+    if (name.length > NAME_MAX_LEN) {
+      setFieldInvalid('name', true);
+      return { ok: false, message: 'ФИО — не более ' + NAME_MAX_LEN + ' символов.' };
+    }
+    if (!FIO_RE.test(name)) {
+      setFieldInvalid('name', true);
+      return { ok: false, message: 'ФИО: только буквы, пробелы, дефис и точка (от 2 символов).' };
+    }
+
+    if (company.length > COMPANY_MAX_LEN) {
+      setFieldInvalid('company', true);
+      return { ok: false, message: 'Название компании — не более ' + COMPANY_MAX_LEN + ' символов.' };
+    }
+    if (!company) {
+      setFieldInvalid('company', true);
+      return { ok: false, message: 'Укажите название компании.' };
+    }
+
+    if (phoneDigits.length !== 11) {
+      setFieldInvalid('phone', true);
+      return { ok: false, message: 'Введите номер телефона полностью: +7 и 10 цифр.' };
+    }
+
+    if (!email) {
+      setFieldInvalid('email', true);
+      return { ok: false, message: 'Укажите email.' };
+    }
+    if (!EMAIL_RE.test(email)) {
+      setFieldInvalid('email', true);
+      return { ok: false, message: 'Некорректный email. Пример: name@company.ru' };
+    }
+
+    return { ok: true, name: name, company: company, phone: phone, email: email };
+  }
+
+  function initContactForm() {
+    var nameEl = document.getElementById('name');
+    var companyEl = document.getElementById('company');
+    var phoneEl = document.getElementById('phone');
+    var emailEl = document.getElementById('email');
+
+    if (nameEl) limitFieldLength(nameEl, NAME_MAX_LEN);
+    if (companyEl) limitFieldLength(companyEl, COMPANY_MAX_LEN);
+    if (phoneEl) initPhoneField(phoneEl);
+
+    if (emailEl) {
+      emailEl.addEventListener('input', function() {
+        var val = emailEl.value.trim();
+        setFieldInvalid('email', val.length > 0 && !EMAIL_RE.test(val));
+      });
+      emailEl.addEventListener('blur', function() {
+        var val = emailEl.value.trim();
+        setFieldInvalid('email', val.length > 0 && !EMAIL_RE.test(val));
+      });
+    }
+  }
+
   async function submitForm(e) {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -1308,17 +1507,18 @@
     successToast.classList.remove('visible');
     setSubmitText('Проверка...');
 
-    var name = document.getElementById('name').value.trim();
-    var company = document.getElementById('company').value.trim();
-    var phone = document.getElementById('phone').value.trim();
-    var email = document.getElementById('email').value.trim();
-
-    if (!name || !phone || !email) {
-      errorToast.textContent = 'Заполните имя, телефон и email.';
+    var validated = validateContactFields();
+    if (!validated.ok) {
+      errorToast.textContent = validated.message;
       errorToast.classList.add('visible');
       setSubmitText('Получить расчёт →');
       return;
     }
+
+    var name = validated.name;
+    var company = validated.company;
+    var phone = validated.phone;
+    var email = validated.email;
 
     if (!calcResult) {
       errorToast.textContent = 'Сначала пройдите все шаги калькулятора и выполните расчёт.';
