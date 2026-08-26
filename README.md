@@ -74,9 +74,10 @@ PORT=3456
 2. **New Project** → **Deploy from GitHub repo** → `Axer-me/kassy`. Если репозитория нет в списке: **Configure GitHub App** и выдайте доступ.
 3. Откройте сервис → **Variables** → добавьте переменные из раздела ниже.
 4. **Settings → Volume** → добавьте том, mount path: `/data`.
-5. В Variables задайте `DATABASE_PATH=/data/submissions.db`.
-6. **Settings → Networking → Generate Domain**.
-7. Дождитесь статуса **Success** в Deployments и откройте выданный `https://….up.railway.app`.
+5. В Variables задайте `DATABASE_PATH=/data/submissions.db` (если том примонтирован, сервер сам выберет `/data/submissions.db`).
+6. **Settings → Replicas** должно быть **1** — SQLite не работает с несколькими инстансами.
+7. **Settings → Networking → Generate Domain**.
+8. Дождитесь статуса **Success** в Deployments и откройте выданный `https://….up.railway.app`.
 
 Логи заявок: `https://ВАШ-ДОМЕН/api/submissions` — логин `admin`, пароль `KSO_DEMO_DAY_LOGS`.
 
