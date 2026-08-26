@@ -2,20 +2,26 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import nodemailer from 'nodemailer';
+import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3456;
+const ROOT = path.join(__dirname, '..');
+const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'submissions.db');
 
 app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.static(ROOT));
 
 function requireEnv(name) {
   const value = process.env[name];
-  if (!value) throw new Error(`Не задана переменная окружения ${name}. Скопируйте .env.example в .env и заполните SMTP-данные.`);
+  if (!value) {
+    throw new Error(`Не задана переменная окружения ${name}. Скопируйте .env.example в .env и заполните SMTP-данные.`);
+  }
   return value;
 }
 
@@ -30,6 +36,24 @@ function getTransporter() {
     },
   });
 }
+
+const db = new Database(DB_PATH);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS form_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    name TEXT NOT NULL,
+    company TEXT,
+    phone TEXT NOT NULL,
+    email TEXT NOT NULL,
+    calculation_json TEXT
+  )
+`);
+
+const insertSubmission = db.prepare(`
+  INSERT INTO form_submissions (name, company, phone, email, calculation_json)
+  VALUES (@name, @company, @phone, @email, @calculation_json)
+`);
 
 function optionLabel(key) {
   const labels = {
@@ -78,16 +102,20 @@ function buildEmailHtml({ name, company, phone, calculation: c }) {
 
   <table style="width: 100%; margin-bottom: 24px; border-collapse: collapse;">
     <tr style="background: #f5f5f5;">
-      <td style="padding: 12px; border-radius: 8px 0 0 8px;"><strong>Покупка</strong></td>
+      <td style="padding: 12px; border-radius: 8px 0 0 8px;"><strong>Покупка (вложения за период)</strong></td>
       <td style="padding: 12px; border-radius: 0 8px 8px 0; text-align: right;"><strong>${c.purchaseTotalFormatted}</strong></td>
     </tr>
     <tr>
-      <td style="padding: 12px;"><strong>Подписка</strong></td>
+      <td style="padding: 12px;"><strong>Подписка за период</strong></td>
       <td style="padding: 12px; text-align: right; color: #EF3124;"><strong>${c.subscriptionTotalFormatted}</strong></td>
     </tr>
     <tr style="background: #fff3f2;">
-      <td style="padding: 12px; border-radius: 8px 0 0 8px;"><strong>Экономия / остаётся в обороте</strong></td>
+      <td style="padding: 12px; border-radius: 8px 0 0 8px;"><strong>Экономия за период</strong></td>
       <td style="padding: 12px; border-radius: 0 8px 8px 0; text-align: right; color: #EF3124;"><strong>${c.savingsFormatted}</strong></td>
+    </tr>
+    <tr style="background: #f0faf0;">
+      <td style="padding: 12px; border-radius: 8px 0 0 8px;"><strong>Остаётся в обороте (в моменте)</strong></td>
+      <td style="padding: 12px; border-radius: 0 8px 8px 0; text-align: right; color: #2e7d32;"><strong>${c.inCirculationFormatted}</strong></td>
     </tr>
   </table>
 
@@ -99,6 +127,16 @@ function buildEmailHtml({ name, company, phone, calculation: c }) {
   <p style="margin-top: 24px; color: #666;">С уважением,<br>Альфа-Банк</p>
 </body>
 </html>`;
+}
+
+function logSubmission({ name, company, phone, email, calculation }) {
+  insertSubmission.run({
+    name,
+    company: company || null,
+    phone,
+    email,
+    calculation_json: JSON.stringify(calculation),
+  });
 }
 
 app.post('/api/send-calculation', async (req, res) => {
@@ -117,6 +155,14 @@ app.post('/api/send-calculation', async (req, res) => {
       return res.status(400).json({ error: 'Данные расчёта отсутствуют. Пройдите все шаги калькулятора.' });
     }
 
+    logSubmission({
+      name: name.trim(),
+      company: company?.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+      calculation,
+    });
+
     const transporter = getTransporter();
     const from = process.env.SMTP_FROM || requireEnv('SMTP_USER');
 
@@ -124,7 +170,12 @@ app.post('/api/send-calculation', async (req, res) => {
       from,
       to: email.trim(),
       subject: `Расчёт экономики: кассы самообслуживания — ${calculation.registers} касс`,
-      html: buildEmailHtml({ name: name.trim(), company: company?.trim(), phone: phone.trim(), calculation }),
+      html: buildEmailHtml({
+        name: name.trim(),
+        company: company?.trim(),
+        phone: phone.trim(),
+        calculation,
+      }),
     });
 
     res.json({ ok: true });
@@ -138,11 +189,22 @@ app.post('/api/send-calculation', async (req, res) => {
   }
 });
 
+app.get('/api/submissions', (_req, res) => {
+  const rows = db.prepare(`
+    SELECT id, created_at, name, company, phone, email, calculation_json
+    FROM form_submissions
+    ORDER BY id DESC
+    LIMIT 200
+  `).all();
+  res.json(rows);
+});
+
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'kassa-mockup.html'));
+  res.sendFile(path.join(ROOT, 'index.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`\n  Мокап:  http://localhost:${PORT}/kassa-mockup.html`);
-  console.log(`  API:    http://localhost:${PORT}/api/send-calculation\n`);
+  console.log(`\n  Калькулятор:  http://localhost:${PORT}/`);
+  console.log(`  API:          http://localhost:${PORT}/api/send-calculation`);
+  console.log(`  База данных:  ${DB_PATH}\n`);
 });

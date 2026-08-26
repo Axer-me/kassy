@@ -1,42 +1,37 @@
-# kassy_demo
+# kassy
 
-Мокап калькулятора экономики касс самообслуживания (Альфа-Банк) + вспомогательные материалы.
+Калькулятор экономики касс самообслуживания (Альфа-Банк) с Node-бэкендом: отправка расчёта на email и логирование заявок в SQLite.
 
-## Кассы самообслуживания
+Репозиторий: [github.com/Axer-me/kassy](https://github.com/Axer-me/kassy)
 
-| Файл | Описание |
-|------|----------|
-| `kassa-mockup.html` | Демо для заказчика (без ключей API) |
-| `kassa-mockup-emails.html` | Версия с отправкой email (ключи — плейсхолдеры, см. ниже) |
-| `Запуск мокапа касс.bat` | Открыть мокап на Windows |
-| `Запуск для iPhone.bat` | Локальный HTTP-сервер для теста на iPhone/iPad |
-| `kassa-email-server/` | Опциональный Node-бэкенд для SMTP (не обязателен) |
+## Быстрый старт
 
-### Настройка отправки email
+1. Запустите **`Запуск мокапа касс.bat`**
+2. При первом запуске откроется `kassa-email-server/.env` — укажите SMTP (Yandex и др.)
+3. Откроется http://localhost:3456/
 
-В `kassa-mockup-emails.html` замените плейсхолдеры:
+Для демо с iPhone/iPad в той же Wi‑Fi: **`Запуск для iPhone.bat`** (сервер на `0.0.0.0:3456`).
 
-```javascript
-const EMAILJS = {
-  publicKey:  'YOUR_PUBLIC_KEY',
-  serviceId:  'YOUR_SERVICE_ID',
-  templateId: 'YOUR_TEMPLATE_ID',
-};
-const IMGBB_API_KEY = 'YOUR_IMGBB_API_KEY';
-```
+## Структура
 
-Шаблон EmailJS — **HTML**, с переменными `{{image_url}}`, `{{user_name}}` и др. (инструкция в комментарии внутри файла).
+| Файл / папка | Назначение |
+|--------------|------------|
+| `index.html` | Лендинг (SVG) + 5 экранов калькулятора |
+| `assets/` | SVG-секции лендинга, hero касса.svg |
+| `kassa-email-server/` | Express + SMTP + SQLite |
+| `kassa-email-server/.env` | SMTP и порт (локально, не в git) |
+| `kassa-email-server/submissions.db` | Логи форм (создаётся автоматически) |
 
-### iPhone / демо без сервера
+## API
 
-- Навигация и опции работают через **CSS + label/checkbox** (без JavaScript).
-- Предпросчитаны все 16 комбинаций комплектации для **50 касс · 3 года**.
-- Отправка email с iPhone — через `Запуск для iPhone.bat` + Safari.
+- `POST /api/send-calculation` — отправка письма + запись в БД
+- `GET /api/submissions` — последние 200 заявок (для просмотра логов)
 
-## Пульс клиента
+## Расчёт
 
-Отдельный прототип в `pulse-client/` (React + Vite). Запуск: `Запуск Пульса клиента.bat`.
+- **Покупка:** (КСО + допы) × кол-во + сервис **4 000 ₽/мес** × срок
+- **Подписка:** тариф × кол-во × месяцы
+- **В обороте:** сумма покупки − первый месячный платёж по подписке
+- **Экономия за период:** покупка − подписка
 
-## История разработки
-
-См. [CHAT_HISTORY.md](./CHAT_HISTORY.md).
+История разработки: [CHAT_HISTORY.md](./CHAT_HISTORY.md).

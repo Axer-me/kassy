@@ -9,9 +9,9 @@ kassa-email-server/node_modules/
 !.env.example
 
 # Build output
-pulse-client/dist/
-pulse-client/demo/
 *.log
+kassa-email-server/submissions.db
+kassa-email-server/submissions.db-*
 
 # OS / IDE
 .DS_Store
@@ -20,5 +20,15 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Cursor assets (local paths)
-assets/
+# Dev renders (optional; SVGs in assets/ are tracked)
+assets/render-*.png
+assets/compare-*.png
+
+# Local dev scripts / temp
+_*.py
+_*.txt
+figma_css.txt
+ios_figma.txt
+1280-SKB*.png
+1280-SKB*.pdf
+kassy_demo_передача/

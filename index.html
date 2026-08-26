@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Кассы самообслуживания — Альфа-Банк</title>
+    <script>
+    function goTo(n) {
+      var radio = document.getElementById('page-' + n);
+      if (radio) radio.checked = true;
+      var screen = document.getElementById('screen-' + n);
+      if (screen) screen.scrollTop = 0;
+    }
+
+    var registers = 50;
+    var years = 3;
+    var calcResult = null;
+    var BASE_MONTHLY = 6990;
+    var SERVICE_MONTHLY = 4000;
+    var PURCHASE_PRICES = {
+      kassa: 150000,
+      scanner: 4000,
+      pedestal: 27000,
+      scales: 8500,
+      install: 17500
+    };
+
+    var optionPrices = { scanner: 110, pedestal: 730, scales: 230, install: 490 };
+
+    function isOptChecked(id) {
+      var el = document.getElementById(id);
+      return el ? el.checked : false;
+    }
+
+    function getSelectedOptions() {
+      return {
+        scanner: isOptChecked('opt-scanner-cb'),
+        pedestal: isOptChecked('opt-pedestal-cb'),
+        scales: isOptChecked('opt-scales-cb'),
+        install: isOptChecked('opt-install-cb')
+      };
+    }
+
+    function getMonthlyPrice() {
+      var total = BASE_MONTHLY;
+      if (isOptChecked('opt-scanner-cb')) total += optionPrices.scanner;
+      if (isOptChecked('opt-pedestal-cb')) total += optionPrices.pedestal;
+      if (isOptChecked('opt-scales-cb')) total += optionPrices.scales;
+      if (isOptChecked('opt-install-cb')) total += optionPrices.install;
+      return total;
+    }
+
+    function formatMoney(n) {
+      return Math.round(n).toLocaleString('ru-RU');
+    }
+
+    function formatMillions(n) {
+      if (n >= 1000000) {
+        var mln = n / 1000000;
+        return mln % 1 === 0 ? mln + ' млн ₽' : mln.toFixed(1).replace('.', ',') + ' млн ₽';
+      }
+      return formatMoney(n) + ' ₽';
+    }
+
+    function updateMonthlyTotal() {
+      var el = document.getElementById('monthly-total');
+      if (el) el.textContent = formatMoney(getMonthlyPrice()) + ' ₽/мес';
+    }
+
+    function changeRegisters(delta) {
+      registers = Math.max(1, Math.min(999, registers + delta));
+      var el = document.getElementById('registers-count');
+      if (el) el.textContent = registers;
+    }
+
+    function setPeriod(y) {
+      years = y;
+      var tabs = document.querySelectorAll('.period-tab');
+      for (var i = 0; i < tabs.length; i++) {
+        var tab = tabs[i];
+        var ty = parseInt(tab.getAttribute('data-years'), 10);
+        if (ty === y) tab.classList.add('active');
+        else tab.classList.remove('active');
+      }
+    }
+
+    function yearLabel(y) {
+      if (y === 1) return '1 год';
+      if (y >= 2 && y <= 4) return y + ' года';
+      return y + ' лет';
+    }
+
+    function setText(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function setRowVisible(id, visible) {
+      var el = document.getElementById(id);
+      if (el) el.style.display = visible ? 'flex' : 'none';
+    }
+
+    function updateResultsUI(c) {
+      setText('calc-subtitle', c.registers + ' касс на ' + c.yearsLabel);
+      setText('r-purchase-total', c.purchaseTotalFormatted);
+      setText('r-sub-total', c.subscriptionTotalFormatted);
+      setText('r-kassa', formatMoney(PURCHASE_PRICES.kassa));
+      setRowVisible('row-scanner', c.options.scanner);
+      setRowVisible('row-pedestal', c.options.pedestal);
+      setRowVisible('row-scales', c.options.scales);
+      setRowVisible('row-install', c.options.install);
+      setText('r-full-kit', formatMoney(c.fullKit) + ' ₽');
+      setText('p-years', String(c.years));
+      setText('r-service', formatMoney(c.serviceTotal) + ' ₽');
+      setText('r-unit-purchase', formatMoney(c.unitPurchaseTotal) + ' ₽');
+      setText('p-count', String(c.registers));
+      setText('r-monthly', formatMoney(c.monthly) + ' ₽');
+      setText('s-months', String(c.months));
+      setText('s-count', String(c.registers));
+      setText('r-monthly-payment', formatMoney(c.monthlyPayment) + ' ₽/мес');
+      setText('insight-circulation', c.inCirculationFormatted);
+      setText('insight-savings', c.savingsFormatted);
+    }
+
+    function runCalculation() {
+      var opts = getSelectedOptions();
+      var months = years * 12;
+      var monthly = getMonthlyPrice();
+      var unitHardware = PURCHASE_PRICES.kassa;
+      if (opts.scanner) unitHardware += PURCHASE_PRICES.scanner;
+      if (opts.pedestal) unitHardware += PURCHASE_PRICES.pedestal;
+      if (opts.scales) unitHardware += PURCHASE_PRICES.scales;
+      if (opts.install) unitHardware += PURCHASE_PRICES.install;
+
+      var fullKit = unitHardware * registers;
+      var serviceTotal = SERVICE_MONTHLY * months * registers;
+      var unitPurchaseTotal = unitHardware + SERVICE_MONTHLY * months;
+      var purchaseTotal = fullKit + serviceTotal;
+      var subscriptionTotal = monthly * registers * months;
+      var monthlyPayment = monthly * registers;
+      var inCirculation = purchaseTotal - monthlyPayment;
+      var savings = Math.max(0, purchaseTotal - subscriptionTotal);
+
+      calcResult = {
+        registers: registers,
+        years: years,
+        yearsLabel: yearLabel(years),
+        months: months,
+        monthly: monthly,
+        monthlyFormatted: formatMoney(monthly) + ' \u20bd',
+        monthlyPayment: monthlyPayment,
+        monthlyPaymentFormatted: formatMoney(monthlyPayment) + ' \u20bd/мес',
+        options: opts,
+        unitHardware: unitHardware,
+        unitPurchaseTotal: unitPurchaseTotal,
+        unitPurchaseTotalFormatted: formatMoney(unitPurchaseTotal) + ' \u20bd',
+        fullKit: fullKit,
+        serviceTotal: serviceTotal,
+        purchaseTotal: purchaseTotal,
+        subscriptionTotal: subscriptionTotal,
+        inCirculation: inCirculation,
+        savings: savings,
+        purchaseTotalFormatted: formatMillions(purchaseTotal),
+        subscriptionTotalFormatted: formatMillions(subscriptionTotal),
+        inCirculationFormatted: formatMillions(inCirculation),
+        savingsFormatted: formatMillions(savings)
+      };
+
+      updateResultsUI(calcResult);
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #EF3124;
+      --red-dark: #c9281d;
+      --bg: #000000;
+      --surface: #1a1a1a;
+      --surface-2: #252525;
+      --text: #ffffff;
+      --text-muted: #8a8a8a;
+      --text-dim: #666666;
+      --green: #4caf50;
+      --yellow: #ffc107;
+      --radius-lg: 40px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100%;
+      min-height: 100dvh;
+      background: #0a0a0a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* iPad frame */
+    .ipad {
+      width: 768px;
+      height: 1024px;
+      max-height: calc(100dvh - 48px);
+      background: var(--bg);
+      border-radius: var(--radius-lg);
+      border: 3px solid #222;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6), inset 0 0 0 1px #333;
+      overflow: visible;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .page-nav,
+    .option-nav {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .submit-trigger {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .file-warning {
+      background: rgba(239, 49, 36, .15);
+      border: 1px solid var(--red);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      color: #ff8a80;
+      font-size: 13px;
+      line-height: 1.45;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .file-warning.visible { display: block; }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      padding: 32px 40px 40px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #page-1:checked + .screen-1,
+    #page-2:checked + .screen-2,
+    #page-3:checked + .screen-3,
+    #page-4:checked + .screen-4,
+    #page-5:checked + .screen-5 {
+      display: flex;
+    }
+
+    /* Shared header */
+    .brand {
+      text-align: center;
+      color: var(--red);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      margin-bottom: 8px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      min-height: 28px;
+    }
+
+    .back-btn,
+    label.back-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 15px;
+      cursor: pointer;
+      padding: 8px 4px;
+      min-height: 44px;
+      min-width: 44px;
+      transition: color .15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .back-btn:hover { color: var(--text); }
+
+    .header-spacer { width: 60px; }
+
+    /* Buttons */
+    .btn-primary,
+    label.btn-primary {
+      width: 100%;
+      background: var(--red);
+      color: var(--text);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 18px 24px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      margin-top: auto;
+      min-height: 52px;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    label.btn-primary,
+    label.btn-secondary {
+      display: block;
+      text-align: center;
+      line-height: 1.2;
+      position: relative;
+    }
+
+    label.btn-primary .submit-trigger {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      margin: 0;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    .btn-primary:hover,
+    label.btn-primary:hover { background: var(--red-dark); }
+    .btn-primary:active { transform: scale(.98); }
+
+
+
+
+
+    /* ===== SCREEN 1 — SVG landing (Figma exports) ===== */
+    .screen.screen-1 {
+      padding: 0;
+      overflow-x: visible;
+      overflow-y: auto;
+      background: #000;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .skb-viewport {
+      width: 768px;
+      max-width: 100%;
+      flex: none;
+      display: flex;
+      justify-content: flex-start;
+      align-items: flex-start;
+      overflow: visible;
+      background: #000;
+    }
+
+    .skb-scale-wrap {
+      width: 768px;
+      max-width: 100%;
+      overflow: hidden;
+      border-top-left-radius: 38.4px;
+      border-top-right-radius: 38.4px;
+    }
+
+    .skb-page.skb-landing {
+      width: 1280px;
+      transform: scale(0.6);
+      transform-origin: top left;
+      background: #000000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .skb-svg-block {
+      position: relative;
+      width: 1140px;
+      flex-shrink: 0;
+      line-height: 0;
+    }
+
+    .skb-svg-block--full {
+      width: 1280px;
+    }
+
+    .skb-svg-block[data-section="hero"] {
+      z-index: 2;
+      background: #000000;
+      margin-bottom: -64px;
+    }
+
+    .skb-svg-block--footer {
+      margin-top: -64px !important;
+      z-index: 2;
+    }
+
+    .skb-svg-block--footer::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 164px;
+      background: #ffffff;
+      z-index: 0;
+    }
+
+    .skb-svg-block--footer .skb-svg-img,
+    .skb-svg-block--footer .skb-svg-cta {
+      position: relative;
+      z-index: 1;
+    }
+
+    .skb-landing-content {
+      width: 100%;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 0;
+      padding: 128px 0 64px;
+      gap: 128px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .skb-svg-img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .skb-svg-hero-kassa {
+      position: absolute;
+      pointer-events: none;
+      object-fit: contain;
+    }
+
+    .skb-svg-cta {
+      position: absolute;
+      display: block;
+      margin: 0;
+      padding: 0;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      text-indent: -9999px;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    .skb-svg-cta:focus-visible {
+      outline: 2px solid #F83A2A;
+      outline-offset: 2px;
+    }
+
+
+    /* ===== SCREEN 2 ===== */
+    .screen-2 h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 24px;
+      margin-top: 8px;
+    }
+
+    .options-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .option-item,
+    label.option-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      user-select: none;
+      min-height: 44px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .checkbox {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #555;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+    }
+
+
+    .option-label {
+      font-size: 17px;
+      color: var(--text);
+    }
+
+    .total-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .total-card .label {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .total-card .total {
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ===== SCREEN 3 ===== */
+    .screen-3 h2 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 48px;
+      line-height: 1.3;
+    }
+
+    .field-group {
+      margin-bottom: 36px;
+    }
+
+    .field-label {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .stepper {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .stepper-btn {
+      width: 64px;
+      height: 64px;
+      border: none;
+      font-size: 28px;
+      font-weight: 300;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .15s;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .stepper-btn.minus {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .stepper-btn.plus {
+      background: var(--red);
+      color: var(--text);
+    }
+
+    .stepper-btn:hover { opacity: .85; }
+
+    .stepper-value {
+      flex: 1;
+      text-align: center;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .period-tabs {
+      display: flex;
+      gap: 10px;
+    }
+
+    .period-tab {
+      flex: 1;
+      background: var(--surface);
+      border: 2px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 16px 8px;
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      min-height: 52px;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .period-tab.active {
+      border-color: var(--red);
+      background: rgba(239, 49, 36, .12);
+    }
+
+    .period-tab:hover:not(.active) { background: var(--surface-2); }
+
+    .disclaimer {
+      color: var(--text-dim);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 32px;
+    }
+
+    /* ===== SCREEN 4 ===== */
+    .screen-4 {
+      padding: 24px 28px 28px;
+      overflow-y: auto;
+    }
+
+    .screen-4 .page-title {
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .screen-4 .page-title h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .screen-4 .subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
+    .comparison {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      margin-bottom: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .vs-badge {
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .compare-card {
+      flex: 1;
+      border-radius: var(--radius-md);
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      font-size: 11px;
+      line-height: 1.4;
+      overflow: hidden;
+    }
+
+    .compare-card.purchase {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .compare-card.subscription {
+      background: var(--red);
+      color: var(--text);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .card-total {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .line-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+      color: inherit;
+      opacity: .85;
+    }
+
+    .line-item.bold {
+      font-weight: 700;
+      opacity: 1;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,.15);
+    }
+
+    .line-item .val { white-space: nowrap; }
+
+    .sub-note {
+      font-size: 9px;
+      opacity: .7;
+    }
+
+    .warnings {
+      margin-top: auto;
+      padding-top: 10px;
+    }
+
+    .warning-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      margin-bottom: 4px;
+      color: var(--yellow);
+    }
+
+    .benefits {
+      margin-top: 8px;
+    }
+
+    .benefit-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 6px;
+      font-size: 10px;
+    }
+
+    .benefit-item .check {
+      color: #a5f3a5;
+      flex-shrink: 0;
+    }
+
+    .insight-banner {
+      background: var(--red);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: auto;
+    }
+
+    .insight-icon {
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+
+    .insight-text strong {
+      display: block;
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .insight-text span {
+      font-size: 12px;
+      opacity: .9;
+      line-height: 1.4;
+    }
+
+    .screen-4-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .screen-4-actions .btn-primary,
+    .screen-4-actions label.btn-primary {
+      margin-top: 0;
+      flex: 1;
+    }
+
+    .btn-secondary,
+    label.btn-secondary {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid #333;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      min-height: 52px;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .btn-secondary:hover { background: var(--surface-2); }
+
+    /* ===== SCREEN 5 ===== */
+    .screen-5 h2 {
+      font-size: 26px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .screen-5 .form-subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 36px;
+      line-height: 1.4;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .form-group input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid #333;
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+      transition: border-color .15s;
+    }
+
+    .form-group input:focus { border-color: var(--red); }
+    .form-group input::placeholder { color: #555; }
+
+    .success-toast {
+      background: var(--surface);
+      border: 1px solid #333;
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      margin-top: 24px;
+      display: none;
+      animation: fadeIn .3s ease;
+    }
+
+    .success-toast.visible { display: block; }
+
+    .success-toast .success-title {
+      color: var(--green);
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .success-toast p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .error-toast {
+      background: rgba(239, 49, 36, .12);
+      border: 1px solid var(--red);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-top: 16px;
+      display: none;
+      color: #ff8a80;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .error-toast.visible { display: block; }
+
+    .error-toast a { color: #ff8a80; }
+    .error-toast code {
+      background: rgba(255,255,255,.08);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .btn-primary:disabled,
+    label.btn-primary.is-disabled {
+      opacity: .6;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 820px) {
+      body {
+        padding: 0;
+        align-items: stretch;
+      }
+
+      .ipad {
+        width: 100%;
+        max-width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+      }
+
+      .screen {
+        padding: 24px 20px 28px;
+        padding-bottom: max(28px, env(safe-area-inset-bottom));
+      }
+
+      .screen-4 {
+        padding: 20px 16px 24px;
+      }
+    }
+
+
+    .ipad:has(#opt-scanner-cb:checked) label[for="opt-scanner-cb"] .checkbox,
+    .ipad:has(#opt-pedestal-cb:checked) label[for="opt-pedestal-cb"] .checkbox,
+    .ipad:has(#opt-scales-cb:checked) label[for="opt-scales-cb"] .checkbox,
+    .ipad:has(#opt-install-cb:checked) label[for="opt-install-cb"] .checkbox {
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .ipad:has(#opt-scanner-cb:checked) label[for="opt-scanner-cb"] .checkbox::after,
+    .ipad:has(#opt-pedestal-cb:checked) label[for="opt-pedestal-cb"] .checkbox::after,
+    .ipad:has(#opt-scales-cb:checked) label[for="opt-scales-cb"] .checkbox::after,
+    .ipad:has(#opt-install-cb:checked) label[for="opt-install-cb"] .checkbox::after {
+      content: '✓';
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="ipad">
+
+  <input type="checkbox" id="opt-scanner-cb" class="option-nav">
+  <input type="checkbox" id="opt-pedestal-cb" class="option-nav">
+  <input type="checkbox" id="opt-scales-cb" class="option-nav">
+  <input type="checkbox" id="opt-install-cb" class="option-nav">
+
+  <input type="radio" name="page" id="page-1" class="page-nav" checked>
+  <!-- Экран 1: Стартовый -->
+  <div class="screen screen-1" id="screen-1">
+    <div class="skb-viewport">
+      <div class="skb-scale-wrap">
+      <div class="skb-page skb-landing">
+        <section class="skb-svg-block skb-svg-block--full" data-section="hero">
+          <img class="skb-svg-img" src="assets/first svg.svg" width="1280" height="872" alt="">
+          <img class="skb-svg-hero-kassa" src="assets/hero касса.svg" alt="" style="left:47.734375%;top:11.353211%;width:46.796875%;height:68.692661%">
+          <label for="page-2" class="skb-svg-cta" style="left:5.468750%;top:47.477064%;width:14.765625%;height:6.422018%" aria-label="Оставить заявку">Оставить заявку</label>
+        </section>
+        <div class="skb-landing-content">
+        <section class="skb-svg-block" data-section="how">
+          <img class="skb-svg-img" src="assets/second svg.svg?v=20260825180019" width="1140" height="774" alt="">
+          <label for="page-2" class="skb-svg-cta" style="left:0.000000%;top:93.798450%;width:15.877193%;height:6.201550%" aria-label="Оставить заявку">Оставить заявку</label>
+        </section>
+        <section class="skb-svg-block" data-section="addons">
+          <img class="skb-svg-img" src="assets/third svg.svg" width="1140" height="686" alt="">
+          <label for="page-2" class="skb-svg-cta" style="left:0.000000%;top:93.002915%;width:15.877193%;height:6.997085%" aria-label="Оставить заявку">Оставить заявку</label>
+        </section>
+        <section class="skb-svg-block skb-svg-block--full" data-section="install">
+          <img class="skb-svg-img" src="assets/fourth svg.svg" width="1280" height="384" alt="">
+          <label for="page-2" class="skb-svg-cta" style="left:5.468750%;top:68.750000%;width:14.140625%;height:12.500000%" aria-label="Оставить заявку">Оставить заявку</label>
+        </section>
+        <section class="skb-svg-block skb-svg-block--full" data-section="industries">
+          <img class="skb-svg-img" src="assets/fifth svg.svg" width="1280" height="952" alt="">
+          <label for="page-2" class="skb-svg-cta" style="left:5.468750%;top:81.512605%;width:14.140625%;height:5.042017%" aria-label="Оставить заявку">Оставить заявку</label>
+        </section>
+        <section class="skb-svg-block skb-svg-block--full" data-section="form">
+          <img class="skb-svg-img" src="assets/sixth svg.svg" width="1280" height="831" alt="">
+          <label for="page-2" class="skb-svg-cta" style="left:51.250000%;top:70.156438%;width:19.218750%;height:5.776173%" aria-label="Перезвонить мне">Перезвонить мне</label>
+        </section>
+        <section class="skb-svg-block skb-svg-block--faq" data-section="faq">
+          <img class="skb-svg-img" src="assets/seventh svg.svg" width="1140" height="90" alt="">
+        </section>
+        </div>
+        <section class="skb-svg-block skb-svg-block--full skb-svg-block--footer" data-section="footer">
+          <img class="skb-svg-img" src="assets/eigth svg.svg" width="1280" height="2172" alt="">
+        </section>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="radio" name="page" id="page-2" class="page-nav">
+  <!-- Экран 2: Комплектация -->
+  <div class="screen screen-2" id="screen-2">
+    <div class="brand">Альфа-Банк</div>
+
+    <h2>Настройте необходимую комплектацию</h2>
+
+<ul class="options-list">
+      <li>
+        <label for="opt-scanner-cb" class="option-item">
+          <span class="checkbox"></span>
+          <span class="option-label">Выносной сканер</span>
+        </label>
+      </li>
+      <li>
+        <label for="opt-pedestal-cb" class="option-item">
+          <span class="checkbox"></span>
+          <span class="option-label">Установочная тумба</span>
+        </label>
+      </li>
+      <li>
+        <label for="opt-scales-cb" class="option-item">
+          <span class="checkbox"></span>
+          <span class="option-label">Весы</span>
+        </label>
+      </li>
+      <li>
+        <label for="opt-install-cb" class="option-item">
+          <span class="checkbox"></span>
+          <span class="option-label">Монтаж оборудования</span>
+        </label>
+      </li>
+    </ul>
+
+    <div class="total-card">
+      <div class="label">Итого за 1 Кассу</div>
+      <div class="monthly-total" id="monthly-total">6 990 ₽/мес</div>
+    </div>
+
+    <label for="page-3" class="btn-primary" >Далее →</label>
+  </div>
+
+  <input type="radio" name="page" id="page-3" class="page-nav">
+  <!-- Экран 3: Параметры расчёта -->
+  <div class="screen screen-3" id="screen-3">
+    <div class="header-row">
+      <label for="page-2" class="back-btn">← Назад</label>
+      <div class="brand" style="margin:0">Альфа-Банк</div>
+      <div class="header-spacer"></div>
+    </div>
+
+    <h2>Расчет экономики<br>для вашей сети</h2>
+
+    <div class="field-group">
+      <div class="field-label">Количество касс</div>
+      <div class="stepper">
+        <button type="button" class="stepper-btn minus" onclick="changeRegisters(-1)">−</button>
+        <div class="stepper-value" id="registers-count">50</div>
+        <button type="button" class="stepper-btn plus" onclick="changeRegisters(1)">+</button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Срок расчёта</div>
+      <div class="period-tabs">
+        <button type="button" class="period-tab" data-years="1" onclick="setPeriod(1)">1 год</button>
+        <button type="button" class="period-tab" data-years="2" onclick="setPeriod(2)">2 года</button>
+        <button type="button" class="period-tab active" data-years="3" onclick="setPeriod(3)">3 года</button>
+      </div>
+    </div>
+
+    <label for="page-4" class="btn-primary" id="btn-calculate" onclick="runCalculation()">Рассчитать →</label>
+
+    <p class="disclaimer">*Расчёт носит информационный характер и не является публичной офертой. Индивидуальные условия определяются в рамках переговоров с представителем банка.</p>
+  </div>
+
+  <input type="radio" name="page" id="page-4" class="page-nav">
+  <!-- Экран 4: Сравнение -->
+  <div class="screen screen-4" id="screen-4">
+    <div class="header-row">
+      <label for="page-3" class="back-btn">← Назад</label>
+      <div class="brand" style="margin:0">Альфа-Банк</div>
+      <div class="header-spacer"></div>
+    </div>
+
+    <div class="page-title">
+      <h2>Расчет для вашего бизнеса</h2>
+    </div>
+    <div class="subtitle" id="calc-subtitle">50 касс на 3 года</div>
+
+    <div class="comparison">
+      <div class="compare-card purchase">
+        <div class="card-header">🛒 Покупка</div>
+        <div class="card-total" id="r-purchase-total">—</div>
+
+        <div class="line-item"><span>Касса</span><span class="val" id="r-kassa">150 000</span></div>
+        <div class="line-item" id="row-scanner" style="display:none"><span>Выносной сканер</span><span class="val">4 000</span></div>
+        <div class="line-item" id="row-pedestal" style="display:none"><span>Установочная тумба</span><span class="val">27 000</span></div>
+        <div class="line-item" id="row-scales" style="display:none"><span>Весы</span><span class="val">8 500</span></div>
+        <div class="line-item" id="row-install" style="display:none"><span>Монтаж оборудования</span><span class="val">17 500</span></div>
+        <div class="line-item bold"><span>Полная комплектация</span><span class="val" id="r-full-kit">—</span></div>
+        <div class="line-item"><span>Обслуживание на <span id="p-years">3</span> года</span><span class="val" id="r-service">—</span></div>
+        <div class="line-item"><span>На 1 КСО за период</span><span class="val" id="r-unit-purchase">—</span></div>
+        <div class="line-item bold"><span>Количество касс</span><span class="val" id="p-count">50</span></div>
+
+        <div class="warnings">
+          <div class="warning-item">⚠ Заморозка активов</div>
+          <div class="warning-item">⚠ Риск простоя</div>
+        </div>
+      </div>
+
+      <div class="vs-badge">vs</div>
+
+      <div class="compare-card subscription">
+        <div class="card-header">📋 Подписка</div>
+        <div class="card-total" id="r-sub-total">—</div>
+
+        <div class="line-item"><span>Касса в месяц</span><span class="val" id="r-monthly">—</span></div>
+        <div class="line-item"><span>Платёж в месяц (все кассы)</span><span class="val" id="r-monthly-payment">—</span></div>
+        <div class="line-item"><span>Кол-во месяцев</span><span class="val" id="s-months">36</span></div>
+        <div class="line-item"><span>Кол-во касс</span><span class="val" id="s-count">50</span></div>
+
+        <div class="benefits">
+          <div class="benefit-item"><span class="check">✓</span><span>Специальные условия на торговый эквайринг</span></div>
+          <div class="benefit-item"><span class="check">✓</span><span>Интеграция с вашей системой</span></div>
+          <div class="benefit-item"><span class="check">✓</span><span>Поддержка 24/7</span></div>
+          <div class="benefit-item"><span class="check">✓</span><span>Выездные инженеры</span></div>
+          <div class="benefit-item"><span class="check">✓</span><span>Замена оборудования</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-banner">
+      <div class="insight-icon">💰</div>
+      <div class="insight-text">
+        <strong id="insight-circulation">—</strong>
+        <span>остаётся в обороте в моменте (покупка минус первый платёж по подписке)</span>
+        <div class="insight-secondary">Экономия за период: <strong id="insight-savings">—</strong></div>
+        <span class="insight-note">Инвестируйте в маркетинг, закупку товара или открытие новых точек</span>
+      </div>
+    </div>
+
+    <div class="screen-4-actions">
+      <label for="page-3" class="btn-secondary">← Изменить</label>
+      <label for="page-5" class="btn-primary" style="margin-top:0">Получить расчёт →</label>
+    </div>
+  </div>
+
+  <input type="radio" name="page" id="page-5" class="page-nav">
+  <!-- Экран 5: Контакты -->
+  <div class="screen screen-5" id="screen-5">
+    <div class="header-row">
+      <label for="page-4" class="back-btn">← Назад</label>
+      <div class="brand" style="margin:0">Альфа-Банк</div>
+      <div class="header-spacer"></div>
+    </div>
+
+    <h2>Забрать расчёт с собой</h2>
+    <p class="form-subtitle">Оставьте контакты — вышлем детальный PDF на почту</p>
+
+    <div class="file-warning" id="file-warning">
+      Для отправки email нужен запущенный сервер. Используйте «Запуск мокапа касс.bat» или «Запуск для iPhone.bat».
+    </div>
+
+    <form id="contact-form" novalidate onsubmit="return false;">
+      <div class="form-group">
+        <label for="name">Имя</label>
+        <input type="text" id="name" placeholder="Иван" required>
+      </div>
+      <div class="form-group">
+        <label for="company">Компания</label>
+        <input type="text" id="company" placeholder="Альфа-Банк">
+      </div>
+      <div class="form-group">
+        <label for="phone">Телефон</label>
+        <input type="tel" id="phone" placeholder="+7 (999) 000-00-00" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="name@company.ru" required>
+      </div>
+
+    </form>
+
+    <label class="btn-primary" id="submit-btn" onclick="submitForm(); return false;">
+      <span id="submit-btn-text">Получить расчёт →</span>
+    </label>
+
+    <div class="error-toast" id="error-toast"></div>
+
+    <div class="success-toast" id="success-toast">
+      <div class="success-title">✓ Отправлено!</div>
+      <p>Расчёт отправлен на вашу почту.</p>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+  function setSubmitText(text) {
+    var el = document.getElementById('submit-btn-text');
+    if (el) el.textContent = text;
+  }
+
+  function setSubmitDisabled(disabled) {
+    var btn = document.getElementById('submit-btn');
+    if (btn) btn.classList.toggle('is-disabled', disabled);
+  }
+
+  function initPage() {
+    ['opt-scanner-cb', 'opt-pedestal-cb', 'opt-scales-cb', 'opt-install-cb'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', updateMonthlyTotal);
+    });
+    updateMonthlyTotal();
+    initSkbLandingScale();
+
+    var page4 = document.getElementById('page-4');
+    if (page4) {
+      page4.addEventListener('change', function() {
+        if (page4.checked) runCalculation();
+      });
+    }
+  }
+
+  var SKB_LANDING_SCALE = 0.6;
+
+  function fitSkbLandingScale() {
+    var page = document.querySelector('.skb-page.skb-landing');
+    var wrap = document.querySelector('.skb-scale-wrap');
+    if (!page || !wrap) return;
+    wrap.style.height = Math.ceil(page.offsetHeight * SKB_LANDING_SCALE) + 'px';
+  }
+
+  function initSkbLandingScale() {
+    var page = document.querySelector('.skb-page.skb-landing');
+    if (!page) return;
+
+    fitSkbLandingScale();
+    page.querySelectorAll('img').forEach(function(img) {
+      if (!img.complete) img.addEventListener('load', fitSkbLandingScale);
+    });
+
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(fitSkbLandingScale).observe(page);
+    }
+
+    window.addEventListener('resize', fitSkbLandingScale);
+    window.addEventListener('load', fitSkbLandingScale);
+  }
+
+  async function submitForm(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    var errorToast = document.getElementById('error-toast');
+    var successToast = document.getElementById('success-toast');
+
+    errorToast.classList.remove('visible');
+    successToast.classList.remove('visible');
+    setSubmitText('Проверка...');
+
+    var name = document.getElementById('name').value.trim();
+    var company = document.getElementById('company').value.trim();
+    var phone = document.getElementById('phone').value.trim();
+    var email = document.getElementById('email').value.trim();
+
+    if (!name || !phone || !email) {
+      errorToast.textContent = 'Заполните имя, телефон и email.';
+      errorToast.classList.add('visible');
+      setSubmitText('Получить расчёт →');
+      return;
+    }
+
+    if (!calcResult) {
+      errorToast.textContent = 'Сначала пройдите все шаги калькулятора и выполните расчёт.';
+      errorToast.classList.add('visible');
+      setSubmitText('Получить расчёт →');
+      return;
+    }
+
+    setSubmitDisabled(true);
+    setSubmitText('Отправка...');
+
+    try {
+      var res = await fetch('/api/send-calculation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name,
+          company: company,
+          phone: phone,
+          email: email,
+          calculation: calcResult
+        })
+      });
+
+      var data = await res.json().catch(function() { return {}; });
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Не удалось отправить письмо.');
+      }
+
+      successToast.classList.add('visible');
+      setSubmitText('Отправлено ✓');
+    } catch (err) {
+      console.error(err);
+      errorToast.textContent = err.message || 'Не удалось отправить. Проверьте, что сервер запущен.';
+      errorToast.classList.add('visible');
+      setSubmitDisabled(false);
+      setSubmitText('Получить расчёт →');
+    }
+  }
+
+  window.submitForm = submitForm;
+  initPage();
+</script>
+</body>
+</html>
