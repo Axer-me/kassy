@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3456;
-const ROOT = path.join(__dirname, '..');
+const ROOT = __dirname;
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'submissions.db');
 
 app.use(cors());

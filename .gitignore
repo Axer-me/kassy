@@ -1,34 +1,10 @@
-# Dependencies
 node_modules/
-pulse-client/node_modules/
-kassa-email-server/node_modules/
-
-# Environment & secrets
 .env
 .env.*
 !.env.example
-
-# Build output
+submissions.db
+submissions.db-*
 *.log
-kassa-email-server/submissions.db
-kassa-email-server/submissions.db-*
-
-# OS / IDE
 .DS_Store
 Thumbs.db
-.idea/
-.vscode/
-*.swp
-
-# Dev renders (optional; SVGs in assets/ are tracked)
-assets/render-*.png
-assets/compare-*.png
-
-# Local dev scripts / temp
-_*.py
-_*.txt
-figma_css.txt
-ios_figma.txt
-1280-SKB*.png
-1280-SKB*.pdf
-kassy_demo_передача/
+assets/*.png
