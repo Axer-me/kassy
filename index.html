@@ -286,6 +286,7 @@
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
+      color: var(--text);
     }
 
     #page-1:checked + .screen-1,
@@ -307,11 +308,17 @@
     }
 
     .header-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      justify-content: space-between;
       margin-bottom: 24px;
-      min-height: 28px;
+      min-height: 44px;
+      gap: 8px;
+    }
+
+    .header-row .brand {
+      margin: 0;
+      justify-self: center;
     }
 
     .back-btn,
@@ -327,9 +334,39 @@
       transition: color .15s;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      justify-self: start;
     }
 
     .back-btn:hover { color: var(--text); }
+
+    .home-btn,
+    label.home-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      justify-self: end;
+      transition: color .15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .home-btn:hover { color: var(--text); }
+
+    .nav-icon {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
 
     .header-spacer { width: 60px; }
 
@@ -487,6 +524,22 @@
       position: absolute;
       pointer-events: none;
       object-fit: contain;
+      z-index: 1;
+    }
+
+    .skb-svg-block[data-section="install"] {
+      overflow: hidden;
+      border-radius: 51.2px;
+      aspect-ratio: 1280 / 384;
+    }
+
+    .skb-svg-block[data-section="install"] .skb-svg-hero-kassa {
+      left: auto;
+      right: 56px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 340px;
+      height: 340px;
     }
 
     .skb-svg-cta {
@@ -569,10 +622,13 @@
       margin-bottom: 8px;
     }
 
-    .total-card .total {
+    .total-card .total,
+    .total-card .monthly-total {
       font-size: 40px;
       font-weight: 700;
       color: var(--text);
+      letter-spacing: -0.02em;
+      line-height: 1.15;
     }
 
     /* ===== SCREEN 3 ===== */
@@ -1092,7 +1148,8 @@
         font-size: 30px;
       }
 
-      .total-card .total {
+      .total-card .total,
+      .total-card .monthly-total {
         font-size: 32px;
       }
 
@@ -1165,7 +1222,6 @@
       <div class="skb-page skb-landing">
         <section class="skb-svg-block skb-svg-block--full" data-section="hero">
           <img class="skb-svg-img" src="assets/first svg.svg" width="1280" height="872" alt="">
-          <img class="skb-svg-hero-kassa" src="assets/hero касса.svg" alt="" style="left:47.734375%;top:11.353211%;width:46.796875%;height:68.692661%">
           <label for="page-2" class="skb-svg-cta" style="left:5.468750%;top:47.477064%;width:14.765625%;height:6.422018%" aria-label="Оставить заявку">Оставить заявку</label>
         </section>
         <div class="skb-landing-content">
@@ -1179,6 +1235,7 @@
         </section>
         <section class="skb-svg-block skb-svg-block--full" data-section="install">
           <img class="skb-svg-img" src="assets/fourth svg.svg" width="1280" height="384" alt="">
+          <img class="skb-svg-hero-kassa" src="assets/hero касса.svg" alt="">
           <label for="page-2" class="skb-svg-cta" style="left:5.468750%;top:68.750000%;width:14.140625%;height:12.500000%" aria-label="Оставить заявку">Оставить заявку</label>
         </section>
         <section class="skb-svg-block skb-svg-block--full" data-section="industries">
@@ -1204,7 +1261,16 @@
   <input type="radio" name="page" id="page-2" class="page-nav">
   <!-- Экран 2: Комплектация -->
   <div class="screen screen-2" id="screen-2">
-    <div class="brand">Альфа-Банк</div>
+    <div class="header-row">
+      <label for="page-1" class="back-btn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Назад
+      </label>
+      <div class="brand">Альфа-Банк</div>
+      <label for="page-1" class="home-btn" aria-label="На главную" title="На главную">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </label>
+    </div>
 
     <h2>Настройте необходимую комплектацию</h2>
 
@@ -1247,9 +1313,14 @@
   <!-- Экран 3: Параметры расчёта -->
   <div class="screen screen-3" id="screen-3">
     <div class="header-row">
-      <label for="page-2" class="back-btn">← Назад</label>
-      <div class="brand" style="margin:0">Альфа-Банк</div>
-      <div class="header-spacer"></div>
+      <label for="page-2" class="back-btn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Назад
+      </label>
+      <div class="brand">Альфа-Банк</div>
+      <label for="page-1" class="home-btn" aria-label="На главную" title="На главную">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </label>
     </div>
 
     <h2>Расчет экономики<br>для вашей сети</h2>
@@ -1281,9 +1352,14 @@
   <!-- Экран 4: Сравнение -->
   <div class="screen screen-4" id="screen-4">
     <div class="header-row">
-      <label for="page-3" class="back-btn">← Назад</label>
-      <div class="brand" style="margin:0">Альфа-Банк</div>
-      <div class="header-spacer"></div>
+      <label for="page-3" class="back-btn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Назад
+      </label>
+      <div class="brand">Альфа-Банк</div>
+      <label for="page-1" class="home-btn" aria-label="На главную" title="На главную">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </label>
     </div>
 
     <div class="page-title">
@@ -1353,9 +1429,14 @@
   <!-- Экран 5: Контакты -->
   <div class="screen screen-5" id="screen-5">
     <div class="header-row">
-      <label for="page-4" class="back-btn">← Назад</label>
-      <div class="brand" style="margin:0">Альфа-Банк</div>
-      <div class="header-spacer"></div>
+      <label for="page-4" class="back-btn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Назад
+      </label>
+      <div class="brand">Альфа-Банк</div>
+      <label for="page-1" class="home-btn" aria-label="На главную" title="На главную">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </label>
     </div>
 
     <h2>Забрать расчёт с собой</h2>
